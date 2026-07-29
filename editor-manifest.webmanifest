@@ -1,0 +1,24 @@
+{
+  "name": "图编单口排单管家",
+  "short_name": "图编排单",
+  "description": "图编视角的单口、排单、待办与备份管理工具。",
+  "start_url": "editor-order-manager.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7f8",
+  "theme_color": "#1f7a70",
+  "icons": [
+    {
+      "src": "editor-icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "editor-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

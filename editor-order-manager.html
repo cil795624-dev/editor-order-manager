@@ -1,0 +1,2913 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#1f7a70" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="图编排单" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="manifest" href="editor-manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="editor-icon-180.png" />
+  <title>图编单口排单管家</title>
+  <style>
+    :root {
+      --bg: #f5f7f8;
+      --surface: #ffffff;
+      --surface-soft: #eef5f3;
+      --ink: #1f272b;
+      --muted: #65727a;
+      --line: #dbe3e7;
+      --teal: #1f7a70;
+      --teal-soft: #dcefed;
+      --rose: #b8445c;
+      --rose-soft: #f5dce3;
+      --amber: #99691f;
+      --amber-soft: #f3e4c4;
+      --blue: #356ea6;
+      --blue-soft: #dce9f6;
+      --green: #3f7a49;
+      --green-soft: #dceee0;
+      --shadow: 0 16px 42px rgba(37, 52, 60, 0.12);
+      --radius: 8px;
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.88), rgba(245,247,248,.96)),
+        repeating-linear-gradient(90deg, rgba(31,122,112,.05) 0 1px, transparent 1px 34px);
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 20px 16px;
+      background: rgba(255,255,255,.88);
+      border-right: 1px solid var(--line);
+      backdrop-filter: blur(14px);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--teal);
+      flex: 0 0 auto;
+    }
+
+    .mark svg,
+    .icon svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    p {
+      margin: 0;
+    }
+
+    .brand h1 {
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .brand p {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav-btn,
+    .btn {
+      min-height: 40px;
+      border-radius: var(--radius);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 12px;
+      color: var(--ink);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .nav-btn {
+      justify-content: flex-start;
+      color: var(--muted);
+    }
+
+    .nav-btn.active,
+    .btn.primary {
+      color: #fff;
+      border-color: var(--teal);
+      background: var(--teal);
+    }
+
+    .btn.danger {
+      color: var(--rose);
+      border-color: var(--rose-soft);
+      background: #fff;
+    }
+
+    .btn.small {
+      min-height: 34px;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+
+    .btn.icon-only {
+      width: 38px;
+      padding: 0;
+    }
+
+    .side-tools {
+      margin-top: auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .main {
+      min-width: 0;
+      padding: 20px;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .mobile-bar {
+      display: none;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .title-block {
+      display: grid;
+      gap: 4px;
+    }
+
+    .title-block h2 {
+      font-size: 26px;
+      line-height: 1.2;
+    }
+
+    .title-block p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric,
+    .panel,
+    .card,
+    .todo-item {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.94);
+    }
+
+    .metric {
+      padding: 12px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .metric strong {
+      font-size: 22px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search {
+      min-width: 0;
+      position: relative;
+    }
+
+    .search input {
+      width: 100%;
+      min-height: 42px;
+      padding: 9px 12px 9px 38px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .search .icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+    }
+
+    .screen {
+      display: grid;
+      gap: 12px;
+    }
+
+    .panel {
+      overflow: hidden;
+    }
+
+    .panel-head {
+      min-height: 54px;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .panel-head h3 {
+      font-size: 16px;
+    }
+
+    .panel-head span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .panel-filters {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-btn.active {
+      color: #fff;
+      border-color: var(--teal);
+      background: var(--teal);
+    }
+
+    .grid {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 10px;
+    }
+
+    .card,
+    .todo-item {
+      padding: 13px;
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .card-top,
+    .row-between {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .name {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .name h4,
+    .name strong {
+      font-size: 15px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .risk-icon {
+      display: inline-flex;
+      margin-right: 5px;
+      color: var(--rose);
+      font-weight: 900;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .pill {
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 4px 9px;
+      color: var(--teal);
+      background: var(--teal-soft);
+      font-size: 12px;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+    }
+
+    .pill.rose {
+      color: var(--rose);
+      background: var(--rose-soft);
+    }
+
+    .pill.amber {
+      color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .pill.blue {
+      color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .pill.green {
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .kv div {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 8px;
+      background: var(--surface-soft);
+      display: grid;
+      gap: 2px;
+    }
+
+    .kv span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .kv strong {
+      font-size: 15px;
+      overflow-wrap: anywhere;
+    }
+
+    .card-actions,
+    .record-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .record-list {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .record {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      background: var(--surface);
+      display: grid;
+      gap: 8px;
+    }
+
+    .done-btn {
+      min-height: 32px;
+      border-radius: 999px;
+      padding: 5px 11px;
+      color: var(--rose);
+      background: var(--rose-soft);
+      font-weight: 900;
+    }
+
+    .done-btn.done {
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .empty {
+      padding: 18px;
+      color: var(--muted);
+      display: grid;
+      gap: 6px;
+      line-height: 1.55;
+    }
+
+    .empty strong {
+      color: var(--ink);
+    }
+
+    .runtime-alert {
+      border: 1px solid var(--amber);
+      border-radius: var(--radius);
+      background: var(--amber-soft);
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(31, 39, 43, .34);
+      display: none;
+      z-index: 20;
+    }
+
+    .modal-backdrop.open {
+      display: block;
+    }
+
+    .modal {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -48%);
+      width: min(620px, calc(100vw - 28px));
+      max-height: calc(100vh - 34px);
+      display: none;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      z-index: 30;
+    }
+
+    .modal.open {
+      display: grid;
+    }
+
+    .modal form {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .modal-head,
+    .modal-foot {
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-foot {
+      border-top: 1px solid var(--line);
+      border-bottom: 0;
+      justify-content: flex-end;
+      background: #f9fbfb;
+    }
+
+    .modal-body {
+      padding: 14px;
+      overflow: auto;
+      display: grid;
+      gap: 12px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 10px;
+    }
+
+    .field textarea {
+      min-height: 70px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .weekday-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .weekday-grid label,
+    .check-line {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 8px;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%) translateY(24px);
+      max-width: min(520px, calc(100vw - 30px));
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      color: #fff;
+      background: var(--ink);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .16s ease, transform .16s ease;
+      z-index: 50;
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .file-input {
+      position: fixed;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .mobile-bar {
+        position: sticky;
+        top: 0;
+        z-index: 12;
+        display: grid;
+        gap: 9px;
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255,255,255,.94);
+        backdrop-filter: blur(14px);
+      }
+
+      .mobile-nav {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .mobile-nav .nav-btn {
+        justify-content: center;
+        padding: 0;
+        font-size: 12px;
+      }
+
+      .mobile-nav .icon {
+        display: none;
+      }
+
+      .main {
+        padding: 14px;
+      }
+
+      .topbar,
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        justify-content: flex-start;
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 620px) {
+      .main {
+        padding: 12px;
+      }
+
+      .title-block h2 {
+        font-size: 22px;
+      }
+
+      .actions,
+      .card-actions,
+      .record-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+      }
+
+      .actions .btn,
+      .card-actions .btn,
+      .record-actions .btn,
+      .record-actions .done-btn {
+        width: 100%;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+        padding: 10px;
+      }
+
+      .kv,
+      .form-grid,
+      .metric-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .weekday-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .modal {
+        inset: 10px;
+        width: auto;
+        max-height: none;
+        transform: none;
+        left: 0;
+        top: 0;
+        margin: auto;
+      }
+
+      .modal-foot {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h10"></path></svg>
+        </div>
+        <div>
+          <h1>图编单口排单管家</h1>
+          <p>单口 / 排单 / 待办</p>
+        </div>
+      </div>
+      <nav class="nav" aria-label="主导航">
+        <button class="nav-btn active" data-view="ports"><span class="icon"><svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"></path><path d="M3 3h5M16 3h5M3 21h5M16 21h5"></path></svg></span>单口</button>
+        <button class="nav-btn" data-view="orders"><span class="icon"><svg viewBox="0 0 24 24"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01M3 12h.01M3 18h.01"></path></svg></span>排单</button>
+        <button class="nav-btn" data-view="todos"><span class="icon"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></span>待办</button>
+      </nav>
+      <div class="side-tools">
+        <button class="btn small" id="backupSideBtn">备份</button>
+        <button class="btn small" id="restoreSideBtn">恢复</button>
+      </div>
+    </aside>
+
+    <div class="mobile-bar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h10"></path></svg>
+        </div>
+        <div>
+          <h1>图编单口排单管家</h1>
+          <p>开卡、排单、出图扣卡</p>
+        </div>
+      </div>
+      <nav class="mobile-nav" aria-label="移动导航">
+        <button class="nav-btn active" data-view="ports">单口</button>
+        <button class="nav-btn" data-view="orders">排单</button>
+        <button class="nav-btn" data-view="todos">待办</button>
+      </nav>
+    </div>
+
+    <main class="main">
+      <section class="topbar">
+        <div class="title-block">
+          <h2 id="pageTitle">单口</h2>
+          <p id="pageSubtitle">按实际到期时间由近到远排序，结合余额和工期标记疑似危险单口。</p>
+        </div>
+        <div class="actions">
+          <button class="btn" id="sampleBtn">示例</button>
+          <button class="btn" id="backupBtn">备份</button>
+          <button class="btn" id="restoreBtn">恢复</button>
+          <button class="btn" id="leaveBtn">请假延期</button>
+          <button class="btn primary" id="newPortBtn">新单口</button>
+          <button class="btn primary" id="newOrderBtn">新排单</button>
+        </div>
+      </section>
+
+      <section class="metric-grid" id="metrics"></section>
+
+      <section class="toolbar">
+        <div class="search">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span>
+          <input id="searchInput" type="search" placeholder="搜索单口、老板、QQ、群号、单号" />
+        </div>
+        <span class="pill blue" id="saveState">已保存</span>
+      </section>
+
+      <noscript>
+        <section class="runtime-alert">当前打开方式不支持操作，请使用浏览器打开这个文件。</section>
+      </noscript>
+      <section class="runtime-alert" id="runtimeAlert" hidden></section>
+
+      <section class="screen" id="productsView" hidden>
+        <section class="panel">
+          <div class="panel-head">
+            <h3>卡项</h3>
+            <span id="productCount">0 个</span>
+          </div>
+          <div class="grid" id="productGrid"></div>
+        </section>
+      </section>
+
+      <section class="screen" id="portsView">
+        <section class="panel">
+          <div class="panel-head">
+            <h3>单口</h3>
+            <span id="portCount">0 个</span>
+          </div>
+          <div class="panel-filters" id="portFilters">
+            <button class="btn small filter-btn active" data-port-filter="all">全部单口</button>
+            <button class="btn small filter-btn" data-port-filter="urgent">快过期单口</button>
+            <button class="btn small filter-btn" data-port-filter="danger">危险单口</button>
+          </div>
+          <div class="grid" id="portGrid"></div>
+        </section>
+      </section>
+
+      <section class="screen" id="ordersView" hidden>
+        <section class="panel">
+          <div class="panel-head">
+            <h3>排单记录</h3>
+            <span id="orderCount">0 条</span>
+          </div>
+          <div class="record-list" id="orderList"></div>
+        </section>
+      </section>
+
+      <section class="screen" id="todosView" hidden>
+        <section class="panel">
+          <div class="panel-head">
+            <h3>待办</h3>
+            <span id="todoCount">0 张</span>
+          </div>
+          <div class="record-list" id="todoList"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+
+  <section class="modal" id="productModal" aria-hidden="true">
+    <form id="productForm">
+      <div class="modal-head">
+        <h3 id="productModalTitle">新卡项</h3>
+        <button type="button" class="btn icon-only" data-close-modal aria-label="关闭"><span class="icon"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="productId" />
+        <div class="form-grid">
+          <div class="field">
+            <label for="productName">卡项名称</label>
+            <input id="productName" required placeholder="年卡 / 月卡 / 半年卡" />
+          </div>
+          <div class="field">
+            <label for="productType">卡项类型</label>
+            <select id="productType">
+              <option>溶图卡</option>
+              <option>板写卡</option>
+              <option>溶写联名</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="productQuota">份额</label>
+            <input id="productQuota" type="number" min="0" step="1" placeholder="可不填" />
+          </div>
+          <div class="field">
+            <label for="productUnitPrice">单价</label>
+            <input id="productUnitPrice" type="number" min="0" step="0.01" placeholder="可不填" />
+          </div>
+          <div class="field">
+            <label>固定停排</label>
+            <div class="weekday-grid" id="productStopDays">
+              <label><input type="checkbox" value="1" />一</label>
+              <label><input type="checkbox" value="2" />二</label>
+              <label><input type="checkbox" value="3" />三</label>
+              <label><input type="checkbox" value="4" />四</label>
+              <label><input type="checkbox" value="5" />五</label>
+              <label><input type="checkbox" value="6" />六</label>
+              <label><input type="checkbox" value="0" />日</label>
+            </div>
+          </div>
+          <div class="field full">
+            <label for="productNote">备注</label>
+            <textarea id="productNote" placeholder="扣卡规则、联名说明、特殊限制"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" data-close-modal>取消</button>
+        <button type="submit" class="btn primary">保存</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="modal" id="portModal" aria-hidden="true">
+    <form id="portForm">
+      <div class="modal-head">
+        <h3 id="portModalTitle">新单口</h3>
+        <button type="button" class="btn icon-only" data-close-modal aria-label="关闭"><span class="icon"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="portId" />
+        <div class="form-grid">
+          <div class="field">
+            <label for="portOwner">单口人</label>
+            <input id="portOwner" required placeholder="老板名字" />
+          </div>
+          <div class="field">
+            <label for="portQq">QQ</label>
+            <input id="portQq" placeholder="QQ号" />
+          </div>
+          <div class="field">
+            <label for="portGroup">单口群号</label>
+            <input id="portGroup" placeholder="群号" />
+          </div>
+          <div class="field">
+            <label for="portProductName">卡项名称</label>
+            <input id="portProductName" placeholder="月卡 / 年卡 / 联名卡 / 月结口" />
+            <input id="portProduct" type="hidden" />
+          </div>
+          <div class="field">
+            <label for="portProductType">卡项类型</label>
+            <select id="portProductType">
+              <option>溶图卡</option>
+              <option>板写卡</option>
+              <option>溶写联名</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="portUnitPrice">单价</label>
+            <input id="portUnitPrice" type="number" min="0" step="0.01" placeholder="可不填" />
+          </div>
+          <div class="field">
+            <label for="portRushType">单口类别</label>
+            <select id="portRushType">
+              <option value="normal">普通单口</option>
+              <option value="rush">加急单口</option>
+              <option value="joint">联名单口</option>
+              <option value="stored">储值散单口</option>
+            </select>
+          </div>
+          <div class="field" id="portCoTeacherField" hidden>
+            <label for="portCoTeacher">联名老师</label>
+            <input id="portCoTeacher" placeholder="填写联名老师名字 / QQ" />
+          </div>
+          <div class="field">
+            <label for="portLeadDays">单口工期</label>
+            <input id="portLeadDays" type="number" min="0" step="1" value="7" />
+          </div>
+          <div class="field">
+            <label for="portExpiry">单口到期时间</label>
+            <input id="portExpiry" type="date" />
+          </div>
+          <div class="field">
+            <label for="portBalance" id="portBalanceLabel">卡数余额</label>
+            <input id="portBalance" type="number" min="0" step="1" placeholder="可不填，适合月结散单口" />
+          </div>
+          <div class="field">
+            <label for="portExtensionDays">单口延期天数</label>
+            <input id="portExtensionDays" type="number" min="0" step="1" value="0" />
+          </div>
+          <div class="field">
+            <label>固定停排</label>
+            <div class="weekday-grid" id="portStopDays">
+              <label><input type="checkbox" value="1" />一</label>
+              <label><input type="checkbox" value="2" />二</label>
+              <label><input type="checkbox" value="3" />三</label>
+              <label><input type="checkbox" value="4" />四</label>
+              <label><input type="checkbox" value="5" />五</label>
+              <label><input type="checkbox" value="6" />六</label>
+              <label><input type="checkbox" value="0" />日</label>
+            </div>
+          </div>
+          <div class="field full">
+            <label for="portNote">备注</label>
+            <textarea id="portNote" placeholder="老板偏好、注意事项"></textarea>
+          </div>
+        </div>
+        <div class="hint" id="portExpiryPreview"></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" data-close-modal>取消</button>
+        <button type="submit" class="btn primary">保存</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="modal" id="orderModal" aria-hidden="true">
+    <form id="orderForm">
+      <div class="modal-head">
+        <h3 id="orderModalTitle">新排单</h3>
+        <button type="button" class="btn icon-only" data-close-modal aria-label="关闭"><span class="icon"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="orderId" />
+        <div class="form-grid">
+          <div class="field">
+            <label for="orderNo">单号</label>
+            <input id="orderNo" required placeholder="001" />
+          </div>
+          <div class="field">
+            <label for="orderSource">来源</label>
+            <select id="orderSource">
+              <option value="card">扣卡</option>
+              <option value="loose">散单</option>
+            </select>
+          </div>
+          <div class="field" id="orderPortSearchField">
+            <label for="orderPortSearch">搜索单口</label>
+            <input id="orderPortSearch" placeholder="搜单主名 / QQ / 群号" />
+          </div>
+          <div class="field" id="orderPortField">
+            <label for="orderPort">对应单口</label>
+            <select id="orderPort" required></select>
+          </div>
+          <div class="field" id="orderContentField">
+            <label for="orderContentType">内容类型</label>
+            <select id="orderContentType">
+              <option value="pure">纯溶（1p）</option>
+              <option value="ink">水墨/拼贴（2p）</option>
+              <option value="split2">二分镜（2p）</option>
+              <option value="split3">三分镜（3p）</option>
+              <option value="split4">四分镜（4p）</option>
+            </select>
+          </div>
+          <div class="field" id="orderRushField">
+            <label for="orderRushMode">本次排单</label>
+            <select id="orderRushMode">
+              <option value="normal">非加急</option>
+              <option value="rush">加急（扣卡x2）</option>
+            </select>
+          </div>
+          <div class="field" id="orderCustomerQqField" hidden>
+            <label for="orderCustomerQq">约单人QQ</label>
+            <input id="orderCustomerQq" placeholder="散单直接记录QQ" />
+          </div>
+          <div class="field">
+            <label for="orderGroup">对应群号</label>
+            <input id="orderGroup" placeholder="可不填" />
+          </div>
+          <div class="field">
+            <label for="orderDate">下单日期</label>
+            <input id="orderDate" type="date" required />
+          </div>
+          <div class="field">
+            <label for="orderQty" id="orderQtyLabel">下单张数</label>
+            <input id="orderQty" type="number" min="1" step="1" required value="1" />
+          </div>
+          <div class="field" id="orderLooseLeadField" hidden>
+            <label for="orderLooseLeadDays">散单工期</label>
+            <input id="orderLooseLeadDays" type="number" min="0" step="1" placeholder="可不填" />
+          </div>
+          <div class="field" id="orderLoosePriceField" hidden>
+            <label for="orderLooseUnitPrice">散单单价</label>
+            <input id="orderLooseUnitPrice" type="number" min="0" step="0.01" placeholder="可不填" />
+          </div>
+          <div class="field">
+            <label>出图状态</label>
+            <label class="check-line"><input id="orderCompleted" type="checkbox" /> <span id="orderCompleteText">已完成并扣卡</span></label>
+          </div>
+          <div class="field full">
+            <label for="orderNote">备注</label>
+            <textarea id="orderNote" placeholder="稿件内容、老板要求"></textarea>
+          </div>
+        </div>
+        <div class="hint" id="orderDuePreview"></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" data-close-modal>取消</button>
+        <button type="submit" class="btn primary">保存</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="modal" id="leaveModal" aria-hidden="true">
+    <form id="leaveForm">
+      <div class="modal-head">
+        <h3>请假延期</h3>
+        <button type="button" class="btn icon-only" data-close-modal aria-label="关闭"><span class="icon"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label for="leaveStart">请假开始</label>
+            <input id="leaveStart" type="date" required />
+          </div>
+          <div class="field">
+            <label for="leaveEnd">请假结束</label>
+            <input id="leaveEnd" type="date" required />
+          </div>
+          <div class="field full">
+            <label for="leaveNote">备注</label>
+            <textarea id="leaveNote" placeholder="例如：身体不舒服、考试周、停排公告"></textarea>
+          </div>
+        </div>
+        <div class="hint" id="leavePreview">请假天数会统一加到所有单口的延期天数里，也不会计入工期。</div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" data-close-modal>取消</button>
+        <button type="submit" class="btn primary">确认延期</button>
+      </div>
+    </form>
+  </section>
+
+  <input class="file-input" id="importFile" type="file" accept=".json,application/json,text/plain,application/octet-stream" aria-label="选择备份文件" />
+  <div class="toast" id="toast"></div>
+
+  <script>
+    if (!String.prototype.padStart) {
+      String.prototype.padStart = function (targetLength, padString) {
+        var str = String(this);
+        var pad = String(padString || " ");
+        while (str.length < targetLength) str = pad + str;
+        return str.length > targetLength ? str.slice(str.length - targetLength) : str;
+      };
+    }
+
+    if (!Array.prototype.find) {
+      Array.prototype.find = function (callback, thisArg) {
+        for (var i = 0; i < this.length; i += 1) {
+          if (callback.call(thisArg, this[i], i, this)) return this[i];
+        }
+        return undefined;
+      };
+    }
+
+    if (window.Element && !Element.prototype.matches) {
+      Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
+    }
+
+    if (window.Element && !Element.prototype.closest) {
+      Element.prototype.closest = function (selector) {
+        var node = this;
+        while (node && node.nodeType === 1) {
+          if (node.matches(selector)) return node;
+          node = node.parentElement || node.parentNode;
+        }
+        return null;
+      };
+    }
+
+    var APP_VERSION = "1.0";
+    var STORAGE_KEY = "editor-order-manager-v1";
+    var state = {
+      products: [],
+      ports: [],
+      orders: [],
+      leaves: [],
+      view: "ports",
+      query: "",
+      portFilter: "all",
+      pendingDeleteProductId: "",
+      pendingDeleteOrderId: "",
+      pendingDeletePortId: ""
+    };
+    var memoryStorage = {};
+    var localStorageOK = false;
+
+    function $(selector) {
+      return document.querySelector(selector);
+    }
+
+    function $$(selector) {
+      return Array.prototype.slice.call(document.querySelectorAll(selector));
+    }
+
+    function closestFromEvent(event, selector) {
+      var target = event.target;
+      if (!target) return null;
+      if (target.nodeType !== 1) target = target.parentElement || target.parentNode;
+      return target && target.closest ? target.closest(selector) : null;
+    }
+
+    function uid() {
+      return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
+    }
+
+    function today() {
+      var now = new Date();
+      now.setHours(0, 0, 0, 0);
+      return now;
+    }
+
+    function dateValue(date) {
+      var d = date || today();
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    }
+
+    function parseDate(value) {
+      if (!value) return null;
+      var d = new Date(String(value) + "T00:00:00");
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function formatDate(value) {
+      var d = parseDate(value);
+      if (!d) return "未填";
+      return dateValue(d);
+    }
+
+    function addDays(date, days) {
+      var d = new Date(date);
+      d.setDate(d.getDate() + number(days));
+      return d;
+    }
+
+    function diffDays(left, right) {
+      var a = new Date(left);
+      var b = new Date(right);
+      a.setHours(0, 0, 0, 0);
+      b.setHours(0, 0, 0, 0);
+      return Math.round((a - b) / 86400000);
+    }
+
+    function number(value, fallback) {
+      var n = Number(value);
+      return Number.isFinite(n) ? n : (fallback || 0);
+    }
+
+    function hasNumber(value) {
+      return value !== "" && value !== null && value !== undefined && Number.isFinite(Number(value));
+    }
+
+    function optionalNumber(value) {
+      return hasNumber(value) ? Number(value) : null;
+    }
+
+    function points(value, emptyText) {
+      return hasNumber(value) ? number(value) + " p" : (emptyText || "未填");
+    }
+
+    function money(value) {
+      var n = number(value);
+      return "¥" + n.toFixed(n % 1 ? 2 : 0);
+    }
+
+    function optionalMoney(value) {
+      return hasNumber(value) ? money(value) : "未填";
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function detectLocalStorage() {
+      try {
+        window.localStorage.setItem(STORAGE_KEY + "-probe", "1");
+        window.localStorage.removeItem(STORAGE_KEY + "-probe");
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function storageGet(key) {
+      if (localStorageOK) {
+        try {
+          return window.localStorage.getItem(key);
+        } catch (error) {
+          localStorageOK = false;
+        }
+      }
+      return Object.prototype.hasOwnProperty.call(memoryStorage, key) ? memoryStorage[key] : null;
+    }
+
+    function storageSet(key, value) {
+      var text = String(value);
+      if (localStorageOK) {
+        try {
+          window.localStorage.setItem(key, text);
+          return true;
+        } catch (error) {
+          localStorageOK = false;
+        }
+      }
+      memoryStorage[key] = text;
+      return false;
+    }
+
+    function showRuntime(message) {
+      var box = $("#runtimeAlert");
+      box.hidden = false;
+      box.textContent = message;
+    }
+
+    function initRuntime() {
+      localStorageOK = detectLocalStorage();
+      if (!localStorageOK) {
+        showRuntime("当前打开方式不能长期保存数据，关闭后可能丢失。请换浏览器打开，或每次改完立刻备份。");
+      } else if (location.protocol === "file:") {
+        showRuntime("本文件使用本地保存。换手机、清缓存或更换浏览器前，请先备份。");
+      }
+    }
+
+    function load() {
+      try {
+        var raw = storageGet(STORAGE_KEY);
+        if (!raw) return;
+        var data = JSON.parse(raw);
+        state.products = Array.isArray(data.products) ? data.products : [];
+        state.ports = Array.isArray(data.ports) ? data.ports : [];
+        state.orders = Array.isArray(data.orders) ? data.orders : [];
+        state.leaves = Array.isArray(data.leaves) ? data.leaves : [];
+        if (migrateLegacyPortExpiry()) save();
+      } catch (error) {
+        toast("读取数据失败。");
+      }
+    }
+
+    function save() {
+      var ok = storageSet(STORAGE_KEY, JSON.stringify({
+        app: "图编单口排单管家",
+        version: APP_VERSION,
+        products: state.products,
+        ports: state.ports,
+        orders: state.orders,
+        leaves: state.leaves,
+        updatedAt: new Date().toISOString()
+      }));
+      $("#saveState").textContent = ok ? "已保存" : "临时保存";
+    }
+
+    function legacyProductPauseDays(product) {
+      var start = parseDate(product && product.pauseStart);
+      var end = parseDate(product && product.pauseEnd);
+      if (!start || !end || end < start) return 0;
+      return diffDays(end, start) + 1;
+    }
+
+    function migrateLegacyPortExpiry() {
+      var changed = false;
+      state.ports.forEach(function (port) {
+        var product = productById(port.productId);
+        if (!port.expiryDate && product && product.expiryDate) {
+          port.expiryDate = product.expiryDate;
+          port.extensionDays = number(port.extensionDays) + number(product.extensionDays) + legacyProductPauseDays(product);
+          changed = true;
+        }
+        if (!hasNumber(port.leadDays)) {
+          port.leadDays = hasNumber(product && product.leadDays) ? number(product.leadDays) : 7;
+          changed = true;
+        }
+        if (!port.rushType) {
+          port.rushType = "normal";
+          changed = true;
+        }
+        if (port.rushType === "joint" && port.coTeacher === undefined) {
+          port.coTeacher = "";
+          changed = true;
+        }
+        if (product) {
+          if (!port.productName) {
+            port.productName = product.name || "";
+            changed = true;
+          }
+          if (!port.productType) {
+            port.productType = product.type || "";
+            changed = true;
+          }
+          if (!hasNumber(port.unitPrice) && hasNumber(product.unitPrice)) {
+            port.unitPrice = number(product.unitPrice);
+            changed = true;
+          }
+          if (!Array.isArray(port.stopWeekdays)) {
+            port.stopWeekdays = Array.isArray(product.stopWeekdays) ? product.stopWeekdays.slice() : [];
+            changed = true;
+          }
+        }
+      });
+      state.orders.forEach(function (order) {
+        if ((order.source || "card") === "loose") return;
+        var port = portById(order.portId);
+        var product = productById(order.productId || (port ? port.productId : ""));
+        if (!order.contentType) {
+          order.contentType = "legacy";
+          changed = true;
+        }
+        if (!order.rushMode) {
+          order.rushMode = "normal";
+          changed = true;
+        }
+        if (!order.portRushType && port) {
+          order.portRushType = port.rushType || "normal";
+          changed = true;
+        }
+        if (!order.coTeacher && port && port.coTeacher) {
+          order.coTeacher = port.coTeacher;
+          changed = true;
+        }
+        if (!hasNumber(order.deductQty)) {
+          order.deductQty = number(order.qty);
+          changed = true;
+        }
+        if (!hasNumber(order.leadDays) && port && hasNumber(port.leadDays)) {
+          order.leadDays = number(port.leadDays);
+          changed = true;
+        }
+        if (!order.productName && (product || port)) {
+          order.productName = product ? product.name || "" : port.productName || "";
+          changed = true;
+        }
+        if (!order.productType && (product || port)) {
+          order.productType = product ? product.type || "" : port.productType || "";
+          changed = true;
+        }
+        if (!Array.isArray(order.stopWeekdays) && (product || port)) {
+          order.stopWeekdays = product && Array.isArray(product.stopWeekdays)
+            ? product.stopWeekdays.slice()
+            : (Array.isArray(port.stopWeekdays) ? port.stopWeekdays.slice() : []);
+          changed = true;
+        }
+      });
+      state.products.forEach(function (product) {
+        ["expiryDate", "pauseStart", "pauseEnd", "extensionDays", "leadDays"].forEach(function (key) {
+          if (Object.prototype.hasOwnProperty.call(product, key)) {
+            delete product[key];
+            changed = true;
+          }
+        });
+      });
+      return changed;
+    }
+
+    function toast(message) {
+      var el = $("#toast");
+      el.textContent = message;
+      el.classList.add("show");
+      window.clearTimeout(toast.timer);
+      toast.timer = window.setTimeout(function () {
+        el.classList.remove("show");
+      }, 2200);
+    }
+
+    function productById(id) {
+      return state.products.find(function (item) { return item.id === id; }) || null;
+    }
+
+    function portById(id) {
+      return state.ports.find(function (item) { return item.id === id; }) || null;
+    }
+
+    function ordersForPort(portId) {
+      return state.orders.filter(function (order) { return order.portId === portId; });
+    }
+
+    function productForPort(port) {
+      var product = productById(port && port.productId);
+      return {
+        id: port ? port.productId : "",
+        name: port ? port.productName || (product ? product.name : "") || "未命名卡项" : "未命名卡项",
+        type: port ? port.productType || (product ? product.type : "") || "溶图卡" : "溶图卡",
+        quota: product ? product.quota : null,
+        unitPrice: hasNumber(port && port.unitPrice) ? port.unitPrice : (product ? product.unitPrice : null),
+        stopWeekdays: Array.isArray(port && port.stopWeekdays) ? port.stopWeekdays : (product && Array.isArray(product.stopWeekdays) ? product.stopWeekdays : [])
+      };
+    }
+
+    function productForOrder(order, port) {
+      var product = productById(order && order.productId);
+      if (port) {
+        var portProduct = productForPort(port);
+        return {
+          id: order ? order.productId || portProduct.id : portProduct.id,
+          name: order ? order.productName || portProduct.name : portProduct.name,
+          type: order ? order.productType || portProduct.type : portProduct.type,
+          quota: portProduct.quota,
+          unitPrice: hasNumber(order && order.unitPrice) ? order.unitPrice : portProduct.unitPrice,
+          stopWeekdays: Array.isArray(order && order.stopWeekdays) ? order.stopWeekdays : portProduct.stopWeekdays
+        };
+      }
+      return {
+        id: order ? order.productId : "",
+        name: order ? order.productName || (product ? product.name : "") || "未命名卡项" : "未命名卡项",
+        type: order ? order.productType || (product ? product.type : "") || "溶图卡" : "溶图卡",
+        quota: null,
+        unitPrice: hasNumber(order && order.unitPrice) ? order.unitPrice : (product ? product.unitPrice : null),
+        stopWeekdays: Array.isArray(order && order.stopWeekdays) ? order.stopWeekdays : (product && Array.isArray(product.stopWeekdays) ? product.stopWeekdays : [])
+      };
+    }
+
+    function rushTypeLabel(value) {
+      var map = {
+        normal: "普通单口",
+        rush: "加急单口",
+        joint: "联名单口",
+        stored: "储值散单口"
+      };
+      return map[value] || "普通单口";
+    }
+
+    function isStoredPort(port) {
+      return !!port && port.rushType === "stored";
+    }
+
+    function isJointPort(port) {
+      return !!port && port.rushType === "joint";
+    }
+
+    function orderRushLabel(value) {
+      return value === "rush" ? "加急x2" : "非加急";
+    }
+
+    function defaultRushModeForPort(port) {
+      return port && port.rushType === "rush" ? "rush" : "normal";
+    }
+
+    function contentRule(value) {
+      var map = {
+        pure: { label: "纯溶", points: 1 },
+        ink: { label: "水墨/拼贴", points: 2 },
+        split2: { label: "二分镜", points: 2 },
+        split3: { label: "三分镜", points: 3 },
+        split4: { label: "四分镜", points: 4 },
+        stored: { label: "储值散单", points: 1 },
+        legacy: { label: "旧记录", points: 1 }
+      };
+      return map[value] || map.pure;
+    }
+
+    function calcDeductQty(qty, contentType, rushMode) {
+      var multiplier = rushMode === "rush" ? 2 : 1;
+      return number(qty) * contentRule(contentType).points * multiplier;
+    }
+
+    function orderDeductQty(order) {
+      if ((order.source || "card") === "loose") return number(order.qty);
+      if (hasNumber(order.deductQty)) return number(order.deductQty);
+      return calcDeductQty(order.qty, order.contentType || "pure", order.rushMode || "normal");
+    }
+
+    function orderUsesStoredBalance(order) {
+      if ((order.source || "card") === "loose") return false;
+      var port = portById(order.portId);
+      return isStoredPort(port) || order.portRushType === "stored";
+    }
+
+    function deductUnitText(order) {
+      return "p";
+    }
+
+    function balanceDeduction(order) {
+      if ((order.source || "card") === "loose") return number(order.qty);
+      if (orderUsesStoredBalance(order)) {
+        var unitPrice = orderUnitPrice(order);
+        return unitPrice === null ? null : orderDeductQty(order) * number(unitPrice);
+      }
+      return orderDeductQty(order);
+    }
+
+    function balanceDeductionText(order) {
+      var value = balanceDeduction(order);
+      if (value === null) return "未填单价";
+      return orderUsesStoredBalance(order) ? money(value) : value + " p";
+    }
+
+    function portEffectiveExpiry(port) {
+      if (!port) return null;
+      var base = parseDate(port.expiryDate);
+      if (!base) return null;
+      return addDays(base, number(port.extensionDays));
+    }
+
+    function weekdayText(days) {
+      var map = { 0: "周日", 1: "周一", 2: "周二", 3: "周三", 4: "周四", 5: "周五", 6: "周六" };
+      var list = Array.isArray(days) ? days : [];
+      return list.length ? list.map(function (day) { return map[day]; }).filter(Boolean).join("、") : "无";
+    }
+
+    function isStopDay(date, product) {
+      var days = Array.isArray(product && product.stopWeekdays) ? product.stopWeekdays.map(String) : [];
+      return days.indexOf(String(date.getDay())) >= 0;
+    }
+
+    function leaveDuration(startValue, endValue) {
+      var start = parseDate(startValue);
+      var end = parseDate(endValue);
+      if (!start || !end || end < start) return 0;
+      return diffDays(end, start) + 1;
+    }
+
+    function isLeaveDay(date) {
+      var d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      return state.leaves.some(function (leave) {
+        var start = parseDate(leave.startDate);
+        var end = parseDate(leave.endDate);
+        return start && end && d >= start && d <= end;
+      });
+    }
+
+    function isBlockedWorkDate(date, product) {
+      return isLeaveDay(date) || isStopDay(date, product);
+    }
+
+    function addWorkingDays(start, days, product) {
+      var d = new Date(start);
+      var lead = Math.max(0, number(days));
+      if (lead <= 0) return d;
+      var done = 0;
+      var guard = 0;
+      while (done < lead && guard < 730) {
+        d = addDays(d, 1);
+        if (!isBlockedWorkDate(d, product)) done += 1;
+        guard += 1;
+      }
+      return d;
+    }
+
+    function dueDateForOrder(order) {
+      if ((order.source || "card") === "loose") {
+        var looseStart = parseDate(order.date);
+        if (!looseStart || !hasNumber(order.leadDays)) return "";
+        return dateValue(addWorkingDays(looseStart, number(order.leadDays), null));
+      }
+      var port = portById(order.portId);
+      var product = productForOrder(order, port);
+      var start = parseDate(order.date);
+      if (!start) return "";
+      var lead = hasNumber(port && port.leadDays) ? number(port.leadDays) : number(order.leadDays);
+      return dateValue(addWorkingDays(start, lead, product));
+    }
+
+    function workDaysBetween(start, end, product) {
+      if (!start || !end || end < start) return 0;
+      var count = 0;
+      var d = new Date(start);
+      var guard = 0;
+      while (d <= end && guard < 3700) {
+        if (!isBlockedWorkDate(d, product)) count += 1;
+        d = addDays(d, 1);
+        guard += 1;
+      }
+      return count;
+    }
+
+    function portRisk(port) {
+      var balance = hasNumber(port.balance) ? number(port.balance) : null;
+      if (balance === null || balance <= 0) return { risky: false, text: "" };
+      var expiry = portEffectiveExpiry(port);
+      if (!expiry) return { risky: false, text: "" };
+      var product = productForPort(port);
+      var daysLeft = diffDays(expiry, today());
+      var workDays = workDaysBetween(today(), expiry, product);
+      var lead = Math.max(0, number(port.leadDays));
+      var balanceLabel = isStoredPort(port) ? money(balance) : balance + " p";
+      var workloadBalance = balance;
+      if (isStoredPort(port) && product && hasNumber(product.unitPrice) && number(product.unitPrice) > 0) {
+        workloadBalance = balance / number(product.unitPrice);
+      }
+      if (daysLeft < 0) return { risky: true, text: "已过期，还有 " + balanceLabel + " 未消耗" };
+      if (workDays <= 0) return { risky: true, text: "已经没有可排工作日" };
+      if (lead > 0 && workDays < lead) return { risky: true, text: "剩余可排工作日少于工期" };
+      if (workloadBalance > workDays) return { risky: true, text: isStoredPort(port) ? "储值剩余 " + money(balance) + "，按单价约可抵 " + Math.floor(workloadBalance) + "p，剩余约 " + workDays + " 个可排工作日" : "剩余 " + balance + " p，剩余约 " + workDays + " 个可排工作日" };
+      return { risky: false, text: "" };
+    }
+
+    function isActivePort(port) {
+      return !hasNumber(port.balance) || number(port.balance) > 0;
+    }
+
+    function isUrgentPort(port) {
+      if (!isActivePort(port)) return false;
+      var expiry = portEffectiveExpiry(port);
+      if (!expiry) return false;
+      var days = diffDays(expiry, today());
+      return days >= 0 && days <= 14;
+    }
+
+    function isDangerPort(port) {
+      return isActivePort(port) && portRisk(port).risky;
+    }
+
+    function balanceTextForPort(port) {
+      if (!hasNumber(port && port.balance)) return isStoredPort(port) ? "未填/储值金额" : "未填/月结";
+      return isStoredPort(port) ? money(port.balance) : number(port.balance) + " p";
+    }
+
+    function orderUnitPrice(order) {
+      var port = portById(order.portId);
+      var product = productForOrder(order, port);
+      if (hasNumber(order.unitPrice)) return number(order.unitPrice);
+      if (product && hasNumber(product.unitPrice)) return number(product.unitPrice);
+      return null;
+    }
+
+    function recordAmount(order) {
+      var unitPrice = orderUnitPrice(order);
+      return ((order.source || "card") === "loose" ? number(order.qty) : orderDeductQty(order)) * number(unitPrice);
+    }
+
+    function orderAmountText(order) {
+      return orderUnitPrice(order) !== null ? money(recordAmount(order)) : "未填单价";
+    }
+
+    function portStatus(port) {
+      if (hasNumber(port.balance) && number(port.balance) <= 0) return { label: "已完成", pill: "green", rank: 999999 };
+      var expiry = portEffectiveExpiry(port);
+      if (!expiry) return { label: hasNumber(port.balance) ? "无有效期" : "月结/无期限", pill: "blue", rank: 999998 };
+      var days = diffDays(expiry, today());
+      if (days < 0) return { label: "已过期", pill: "rose", rank: days };
+      var risk = portRisk(port);
+      if (risk.risky) return { label: "疑似排不完", pill: "rose", rank: days };
+      if (days <= 7) return { label: days + "天内到期", pill: "rose", rank: days };
+      if (days <= 14) return { label: days + "天内到期", pill: "amber", rank: days };
+      return { label: "正常", pill: "green", rank: days };
+    }
+
+    function naturalOrder(a, b) {
+      return String(a.orderNo || "").localeCompare(String(b.orderNo || ""), "zh-Hans-CN", { numeric: true }) ||
+        String(a.date || "").localeCompare(String(b.date || ""));
+    }
+
+    function todoOrder(a, b) {
+      var da = dueDateForOrder(a);
+      var db = dueDateForOrder(b);
+      var ra = da ? diffDays(parseDate(da), today()) : 999999;
+      var rb = db ? diffDays(parseDate(db), today()) : 999999;
+      return ra - rb || naturalOrder(a, b);
+    }
+
+    function matchesQuery(text) {
+      var q = state.query.trim().toLowerCase();
+      return !q || String(text).toLowerCase().indexOf(q) >= 0;
+    }
+
+    function titleForView() {
+      var map = {
+        ports: ["单口", "按实际到期时间由近到远排序，结合余额和工期标记疑似危险单口。"],
+        orders: ["排单", "选择内容类型和是否加急后自动计算扣卡，固定停排和请假不计入工期。"],
+        todos: ["待办", "未完成排单按应交日期排序，越紧急越靠前，同一天再按单号排。"]
+      };
+      return map[state.view] || map.ports;
+    }
+
+    function render() {
+      if (state.view === "products") state.view = "ports";
+      var title = titleForView();
+      $("#pageTitle").textContent = title[0];
+      $("#pageSubtitle").textContent = title[1];
+      $$(".nav-btn").forEach(function (button) {
+        button.classList.toggle("active", button.dataset.view === state.view);
+      });
+      ["products", "ports", "orders", "todos"].forEach(function (name) {
+        $("#" + name + "View").hidden = state.view !== name;
+      });
+      renderActionVisibility();
+      renderMetrics();
+      renderProducts();
+      renderPorts();
+      renderOrders();
+      renderTodos();
+    }
+
+    function renderActionVisibility() {
+      $("#newPortBtn").hidden = state.view !== "ports";
+      $("#leaveBtn").hidden = state.view !== "ports";
+      $("#newOrderBtn").hidden = state.view !== "orders";
+      $("#sampleBtn").hidden = state.view !== "ports";
+      $("#metrics").hidden = state.view !== "ports";
+    }
+
+    function renderMetrics() {
+      var activePorts = state.ports.filter(isActivePort);
+      var urgentPorts = activePorts.filter(isUrgentPort);
+      var dangerPorts = activePorts.filter(isDangerPort);
+      var pendingOrders = state.orders.filter(function (order) { return !order.completed; });
+      var todayValue = dateValue();
+      var todayDone = state.orders.reduce(function (sum, order) {
+        return sum + (order.completedAt === todayValue ? number(order.qty) : 0);
+      }, 0);
+      $("#metrics").innerHTML = [
+        metricMarkup("进行中单口", activePorts.length + " 个"),
+        metricMarkup("快到期单口", urgentPorts.length + " 个"),
+        metricMarkup("危险单口", dangerPorts.length + " 个"),
+        metricMarkup("今日已做", todayDone + " 张")
+      ].join("");
+      $("#todoCount").textContent = pendingOrders.reduce(function (sum, order) { return sum + number(order.qty); }, 0) + " 张";
+    }
+
+    function metricMarkup(label, value) {
+      return '<article class="metric"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value) + '</strong></article>';
+    }
+
+    function emptyMarkup(title, body) {
+      return '<div class="empty"><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(body) + '</span></div>';
+    }
+
+    function filteredProducts() {
+      return state.products.filter(function (product) {
+        return matchesQuery([product.name, product.type, product.note].join(" "));
+      }).sort(function (a, b) {
+        return String(a.name).localeCompare(String(b.name), "zh-Hans-CN");
+      });
+    }
+
+    function renderProducts() {
+      var products = filteredProducts();
+      $("#productCount").textContent = products.length + " 个";
+      if (!products.length) {
+        $("#productGrid").innerHTML = emptyMarkup("还没有卡项", "先新建一个月卡、年卡或联名卡。");
+        return;
+      }
+      $("#productGrid").innerHTML = products.map(function (product) {
+        var ports = state.ports.filter(function (port) { return port.productId === product.id; });
+        var balance = ports.reduce(function (sum, port) { return sum + (hasNumber(port.balance) ? number(port.balance) : 0); }, 0);
+        var hasBalanceStat = ports.some(function (port) { return hasNumber(port.balance); });
+        var deleteArmed = state.pendingDeleteProductId === product.id;
+        return '<article class="card">' +
+          '<div class="card-top"><div class="name"><span class="pill blue">' + escapeHtml(product.type) + '</span><h4>' + escapeHtml(product.name) + '</h4><p class="sub">停排：' + escapeHtml(weekdayText(product.stopWeekdays)) + '</p></div>' +
+          '<span class="pill">单口 ' + ports.length + ' 个</span></div>' +
+          '<div class="kv">' +
+          '<div><span>份额</span><strong>' + points(product.quota) + '</strong></div>' +
+          '<div><span>单价</span><strong>' + optionalMoney(product.unitPrice) + (hasNumber(product.unitPrice) ? '/p' : '') + '</strong></div>' +
+          '<div><span>固定停排</span><strong>' + escapeHtml(weekdayText(product.stopWeekdays)) + '</strong></div>' +
+          '<div><span>单口余额</span><strong>' + (hasBalanceStat ? balance + ' p' : '未统计') + '</strong></div>' +
+          '</div>' +
+          '<p class="sub">已绑定单口 ' + ports.length + ' 个</p>' +
+          '<div class="card-actions">' +
+          '<button class="btn small" data-new-port-product="' + product.id + '">建单口</button>' +
+          '<button class="btn small" data-edit-product="' + product.id + '">编辑</button>' +
+          '<button type="button" class="btn small danger" data-delete-product="' + escapeHtml(product.id) + '" onclick="window.__deleteProductFromButton && window.__deleteProductFromButton(this)">' + (deleteArmed ? "再点确认删除" : "删除") + '</button>' +
+          '</div>' +
+          '</article>';
+      }).join("");
+    }
+
+    function filteredPorts() {
+      return state.ports.filter(function (port) {
+        var product = productForPort(port);
+        if (state.portFilter === "urgent" && !isUrgentPort(port)) return false;
+        if (state.portFilter === "danger" && !isDangerPort(port)) return false;
+        return matchesQuery([port.owner, port.qq, port.groupId, port.coTeacher, port.note, rushTypeLabel(port.rushType), product ? product.name : "", product ? product.type : ""].join(" "));
+      }).sort(function (a, b) {
+        var sa = portStatus(a);
+        var sb = portStatus(b);
+        var ra = portRisk(a).risky ? 1 : 0;
+        var rb = portRisk(b).risky ? 1 : 0;
+        return sa.rank - sb.rank || rb - ra || String(a.owner).localeCompare(String(b.owner), "zh-Hans-CN");
+      });
+    }
+
+    function renderPorts() {
+      var ports = filteredPorts();
+      $("#portCount").textContent = ports.length + " 个";
+      $$("#portFilters [data-port-filter]").forEach(function (button) {
+        button.classList.toggle("active", button.dataset.portFilter === state.portFilter);
+      });
+      if (!ports.length) {
+        $("#portGrid").innerHTML = emptyMarkup(state.portFilter === "all" ? "还没有单口" : "没有符合条件的单口", state.portFilter === "all" ? "录入老板 QQ、群号、卡项和余额后会出现在这里。" : "切回全部单口可以查看完整列表。");
+        return;
+      }
+      $("#portGrid").innerHTML = ports.map(function (port) {
+        var product = productForPort(port);
+        var status = portStatus(port);
+        var risk = portRisk(port);
+        var expiry = portEffectiveExpiry(port);
+        var orders = ordersForPort(port.id);
+        var pending = orders.filter(function (order) { return !order.completed; }).reduce(function (sum, order) { return sum + number(order.qty); }, 0);
+        var balanceValue = hasNumber(port.balance) ? number(port.balance) : null;
+        var balanceWorth = balanceValue !== null
+          ? (isStoredPort(port) ? money(balanceValue) : (product && hasNumber(product.unitPrice) ? money(balanceValue * number(product.unitPrice)) : "未折算"))
+          : "未折算";
+        var balanceWorthLabel = isStoredPort(port) ? "储值剩余 " : "折算剩余 ";
+        var deleteArmed = state.pendingDeletePortId === port.id;
+        var extraLine = isJointPort(port) && port.coTeacher ? "联名老师：" + port.coTeacher : "";
+      return '<article class="card">' +
+          '<div class="card-top"><div class="name"><span class="pill ' + status.pill + '">' + escapeHtml(status.label) + '</span><h4>' + (risk.risky ? '<span class="risk-icon" title="疑似危险单口">❗</span>' : '') + escapeHtml(port.owner || "未命名单口") + '</h4><p class="sub">QQ ' + escapeHtml(port.qq || "未填") + ' · 群 ' + escapeHtml(port.groupId || "未填") + '</p></div>' +
+          '<span class="pill blue">' + escapeHtml(product ? product.type : "卡项已删") + '</span></div>' +
+          '<div class="kv">' +
+          '<div><span>卡项</span><strong>' + escapeHtml(product ? product.name : "已删除") + '</strong></div>' +
+          '<div><span>余额</span><strong>' + escapeHtml(balanceTextForPort(port)) + '</strong></div>' +
+          '<div><span>实际到期</span><strong>' + escapeHtml(expiry ? formatDate(dateValue(expiry)) : "未填") + '</strong></div>' +
+          '<div><span>单口类别</span><strong>' + escapeHtml(rushTypeLabel(port.rushType)) + '</strong></div>' +
+          '<div><span>单口工期</span><strong>' + number(port.leadDays) + ' 天</strong></div>' +
+          '<div><span>待做</span><strong>' + pending + ' 张</strong></div>' +
+          '</div>' +
+          '<p class="sub">单口延期 ' + number(port.extensionDays) + ' 天 · ' + balanceWorthLabel + balanceWorth + '</p>' +
+          (extraLine ? '<p class="sub">' + escapeHtml(extraLine) + '</p>' : '') +
+          (risk.risky ? '<p class="sub"><strong>❗ ' + escapeHtml(risk.text) + '</strong></p>' : '') +
+          '<div class="card-actions">' +
+          '<button class="btn small primary" data-order-port="' + port.id + '">排单</button>' +
+          '<button class="btn small" data-extend-port="' + port.id + '">延期</button>' +
+          '<button class="btn small" data-edit-port="' + port.id + '">编辑</button>' +
+          '<button type="button" class="btn small danger" data-delete-port="' + escapeHtml(port.id) + '" onclick="window.__deletePortFromButton && window.__deletePortFromButton(this)">' + (deleteArmed ? "再点确认删除" : "删除") + '</button>' +
+          '</div>' +
+          '</article>';
+      }).join("");
+    }
+
+    function filteredOrders() {
+      return state.orders.filter(function (order) {
+        var port = portById(order.portId);
+        var product = productForOrder(order, port);
+        return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, contentRule(order.contentType || "pure").label, orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : "", product ? product.name : ""].join(" "));
+      }).sort(function (a, b) {
+        return String(b.date || "").localeCompare(String(a.date || "")) || naturalOrder(a, b);
+      });
+    }
+
+    function orderMarkup(order, todoMode) {
+      var isLoose = (order.source || "card") === "loose";
+      var port = portById(order.portId);
+      var product = productForOrder(order, port);
+      var due = dueDateForOrder(order);
+      var dueDays = due ? diffDays(parseDate(due), today()) : 999999;
+      var duePill = order.completed ? "green" : (dueDays < 0 ? "rose" : (dueDays <= 2 ? "amber" : "blue"));
+      var dueText = order.completed ? "已完成" : (due ? "应交 " + due : "未算工期");
+      var storedOrder = orderUsesStoredBalance(order);
+      var mainLine = isLoose
+        ? "散单QQ " + (order.customerQq || "未填")
+        : (port ? port.owner : "单口已删") + " · " + (product ? product.name : "卡项已删");
+      var groupLine = isLoose ? (order.groupId || "未填群号") : (order.groupId || (port ? port.groupId : "") || "未填");
+      var jointText = !isLoose && (order.coTeacher || (port ? port.coTeacher : "")) ? " · 联名老师 " + (order.coTeacher || port.coTeacher) : "";
+      var contentText = isLoose ? "" : (storedOrder
+        ? "储值散单口 · " + contentRule(order.contentType || "pure").label + " · " + orderRushLabel(order.rushMode || "normal") + " · 实扣 " + orderDeductQty(order) + "p · 扣储值 " + balanceDeductionText(order)
+        : contentRule(order.contentType || "pure").label + " · " + orderRushLabel(order.rushMode || "normal") + " · 实扣 " + orderDeductQty(order) + "p") + jointText;
+      var deleteArmed = state.pendingDeleteOrderId === order.id;
+      return '<article class="' + (todoMode ? "todo-item" : "record") + '">' +
+        '<div class="row-between"><div class="name"><span class="pill ' + (isLoose ? duePill : duePill) + '">' + escapeHtml(isLoose ? ("散单" + (due ? " · 应交 " + due : "")) : dueText) + '</span><strong>单号 ' + escapeHtml(order.orderNo || "未填") + '</strong><p class="sub">' + escapeHtml(mainLine) + ' · 群 ' + escapeHtml(groupLine) + '</p></div>' +
+        '<button class="done-btn ' + (order.completed ? "done" : "") + '" data-toggle-order="' + order.id + '">' + (order.completed ? "✓ 已完成" : "待完成") + '</button></div>' +
+        '<div class="kv">' +
+        '<div><span>下单日期</span><strong>' + escapeHtml(formatDate(order.date)) + '</strong></div>' +
+        '<div><span>' + (isLoose ? "张数" : "张数/实扣") + '</span><strong>' + number(order.qty) + (isLoose ? ' 张' : ' 张 / ' + orderDeductQty(order) + ' p') + '</strong></div>' +
+        '<div><span>金额折算</span><strong>' + escapeHtml(orderAmountText(order)) + '</strong></div>' +
+        '<div><span>完成日期</span><strong>' + escapeHtml(order.completedAt || "未完成") + '</strong></div>' +
+        '</div>' +
+        (contentText ? '<p class="sub">' + escapeHtml(contentText) + '</p>' : '') +
+        (order.note ? '<p class="sub">' + escapeHtml(order.note) + '</p>' : '') +
+        '<div class="record-actions">' +
+        '<button class="btn small" data-edit-order="' + order.id + '">编辑</button>' +
+        '<button type="button" class="btn small danger" data-delete-order="' + escapeHtml(order.id) + '" onclick="window.__deleteOrderFromButton && window.__deleteOrderFromButton(this)">' + (deleteArmed ? "再点确认删除" : "删除") + '</button>' +
+        '</div>' +
+        '</article>';
+    }
+
+    function renderOrders() {
+      var orders = filteredOrders();
+      $("#orderCount").textContent = orders.length + " 条";
+      $("#orderList").innerHTML = orders.length ? orders.map(function (order) { return orderMarkup(order, false); }).join("") : emptyMarkup("还没有排单", "新建排单后会自动计算应出图日期。");
+    }
+
+    function renderTodos() {
+      var todos = state.orders.filter(function (order) { return !order.completed; }).filter(function (order) {
+        var port = portById(order.portId);
+        var product = productForOrder(order, port);
+        return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, contentRule(order.contentType || "pure").label, orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : "", product ? product.name : ""].join(" "));
+      }).sort(todoOrder);
+      $("#todoList").innerHTML = todos.length ? todoSummaryMarkup(todos) + todos.map(function (order) { return orderMarkup(order, true); }).join("") : emptyMarkup("今天没有待办", "未完成排单会按应交日期排在这里。");
+    }
+
+    function todoSummaryMarkup(todos) {
+      var todayValue = dateValue();
+      var todayDone = state.orders.reduce(function (sum, order) {
+        return sum + (order.completedAt === todayValue ? number(order.qty) : 0);
+      }, 0);
+      var pending = todos.reduce(function (sum, order) { return sum + number(order.qty); }, 0);
+      var dueToday = todos.reduce(function (sum, order) {
+        return sum + (dueDateForOrder(order) === todayValue ? number(order.qty) : 0);
+      }, 0);
+      return '<section class="metric-grid">' +
+        metricMarkup("待做总量", pending + " 张") +
+        metricMarkup("今日已做", todayDone + " 张") +
+        metricMarkup("今日应交", dueToday + " 张") +
+        metricMarkup("待办条数", todos.length + " 条") +
+        '</section>';
+    }
+
+    function openModal(id) {
+      $("#modalBackdrop").classList.add("open");
+      $("#" + id).classList.add("open");
+      $("#" + id).setAttribute("aria-hidden", "false");
+    }
+
+    function closeModals() {
+      $("#modalBackdrop").classList.remove("open");
+      ["productModal", "portModal", "orderModal", "leaveModal"].forEach(function (id) {
+        $("#" + id).classList.remove("open");
+        $("#" + id).setAttribute("aria-hidden", "true");
+      });
+    }
+
+    function selectedStopDays() {
+      return $$("#productStopDays input:checked").map(function (input) { return input.value; });
+    }
+
+    function setStopDays(days) {
+      var selected = Array.isArray(days) ? days.map(String) : [];
+      $$("#productStopDays input").forEach(function (input) {
+        input.checked = selected.indexOf(input.value) >= 0;
+      });
+    }
+
+    function selectedPortStopDays() {
+      return $$("#portStopDays input:checked").map(function (input) { return input.value; });
+    }
+
+    function setPortStopDays(days) {
+      var selected = Array.isArray(days) ? days.map(String) : [];
+      $$("#portStopDays input").forEach(function (input) {
+        input.checked = selected.indexOf(input.value) >= 0;
+      });
+    }
+
+    function openProductModal(id) {
+      var product = productById(id);
+      $("#productModalTitle").textContent = product ? "编辑卡项" : "新卡项";
+      $("#productId").value = product ? product.id : "";
+      $("#productName").value = product ? product.name || "" : "";
+      $("#productType").value = product ? product.type || "溶图卡" : "溶图卡";
+      $("#productQuota").value = product && product.quota != null ? product.quota : "";
+      $("#productUnitPrice").value = product && product.unitPrice != null ? product.unitPrice : "";
+      $("#productNote").value = product ? product.note || "" : "";
+      setStopDays(product ? product.stopWeekdays : []);
+      openModal("productModal");
+    }
+
+    function renderProductOptions(select, selectedId) {
+      var hasSelectedProduct = selectedId && productById(selectedId);
+      var options = state.products.map(function (product) {
+        return '<option value="' + product.id + '">' + escapeHtml(product.name + " · " + product.type) + '</option>';
+      });
+      if (selectedId && !hasSelectedProduct) {
+        options.unshift('<option value="' + escapeHtml(selectedId) + '">已删除卡项（保留旧单口）</option>');
+      }
+      select.innerHTML = options.length ? options.join("") : '<option value="">无需预建卡项</option>';
+      select.value = selectedId || (state.products[0] ? state.products[0].id : "");
+    }
+
+    function updatePortKindUI() {
+      var type = $("#portRushType").value;
+      $("#portCoTeacherField").hidden = type !== "joint";
+      $("#portBalanceLabel").textContent = type === "stored" ? "储值余额（金额）" : "卡数余额";
+    }
+
+    function updatePortPreview() {
+      updatePortKindUI();
+      var currentPort = portById($("#portId").value);
+      var product = {
+        name: $("#portProductName").value.trim() || (currentPort ? productForPort(currentPort).name : "未命名卡项"),
+        type: $("#portProductType").value,
+        unitPrice: optionalNumber($("#portUnitPrice").value),
+        stopWeekdays: selectedPortStopDays()
+      };
+      var fakePort = { expiryDate: $("#portExpiry").value, extensionDays: $("#portExtensionDays").value };
+      var expiry = portEffectiveExpiry(fakePort);
+      var type = $("#portRushType").value;
+      var extra = type === "joint" ? "；联名老师：" + ($("#portCoTeacher").value.trim() || "未填") : (type === "stored" ? "；储值余额是金额，排单照常算p后扣钱" : "");
+      $("#portExpiryPreview").textContent = "实际到期：" + (expiry ? formatDate(dateValue(expiry)) : "未填") + "；" + product.type + "；" + rushTypeLabel(type) + extra + "；工期 " + number($("#portLeadDays").value) + " 天；固定停排：" + weekdayText(product.stopWeekdays) + "；单价 " + optionalMoney(product.unitPrice) + "。";
+    }
+
+    function openPortModal(id, productId) {
+      var port = portById(id);
+      $("#portModalTitle").textContent = port ? "编辑单口" : "新单口";
+      var product = port ? productForPort(port) : (productById(productId) || null);
+      $("#portId").value = port ? port.id : "";
+      $("#portOwner").value = port ? port.owner || "" : "";
+      $("#portQq").value = port ? port.qq || "" : "";
+      $("#portGroup").value = port ? port.groupId || "" : "";
+      $("#portProduct").value = port ? port.productId || "" : (productId || "");
+      $("#portProductName").value = product ? product.name || "" : "";
+      $("#portProductType").value = product ? product.type || "溶图卡" : "溶图卡";
+      $("#portUnitPrice").value = product && product.unitPrice != null ? product.unitPrice : "";
+      $("#portRushType").value = port ? port.rushType || "normal" : "normal";
+      $("#portCoTeacher").value = port ? port.coTeacher || "" : "";
+      $("#portLeadDays").value = port && hasNumber(port.leadDays) ? port.leadDays : 7;
+      $("#portExpiry").value = port ? port.expiryDate || "" : "";
+      $("#portBalance").value = port ? (port.balance != null ? port.balance : "") : (product && product.quota != null ? product.quota : "");
+      $("#portExtensionDays").value = port ? port.extensionDays || 0 : 0;
+      $("#portNote").value = port ? port.note || "" : "";
+      setPortStopDays(product ? product.stopWeekdays : []);
+      updatePortPreview();
+      openModal("portModal");
+    }
+
+    function portOptionLabel(port) {
+      var product = productForPort(port);
+      return (port.owner || "未命名单口") + " · QQ " + (port.qq || "未填") + " · 群 " + (port.groupId || "未填") + " · " + (product ? product.name : "卡项已删") + " · " + rushTypeLabel(port.rushType) + " · 余" + balanceTextForPort(port);
+    }
+
+    function portSearchText(port) {
+      var product = productForPort(port);
+      return [port.owner, port.qq, port.groupId, port.coTeacher, port.note, rushTypeLabel(port.rushType), product ? product.name : "", product ? product.type : ""].join(" ").toLowerCase();
+    }
+
+    function renderPortOptions(select, selectedId, query) {
+      var ports = state.ports.slice().sort(function (a, b) {
+        var sa = portStatus(a);
+        var sb = portStatus(b);
+        var ra = portRisk(a).risky ? 1 : 0;
+        var rb = portRisk(b).risky ? 1 : 0;
+        return sa.rank - sb.rank || rb - ra || String(a.owner).localeCompare(String(b.owner), "zh-Hans-CN");
+      });
+      if (query && query.trim()) {
+        var q = query.trim().toLowerCase();
+        ports = ports.filter(function (port) { return portSearchText(port).indexOf(q) >= 0; });
+      }
+      select.innerHTML = ports.length ? ports.map(function (port) {
+        return '<option value="' + port.id + '">' + escapeHtml(portOptionLabel(port)) + '</option>';
+      }).join("") : '<option value="">' + (state.ports.length ? "没有匹配单口" : "请先新建单口") + '</option>';
+      select.value = selectedId || (ports[0] ? ports[0].id : "");
+    }
+
+    function updateOrderMode() {
+      var isLoose = $("#orderSource").value === "loose";
+      var port = isLoose ? null : portById($("#orderPort").value);
+      var isStored = !isLoose && isStoredPort(port);
+      $("#orderPortSearchField").hidden = isLoose;
+      $("#orderPortField").hidden = isLoose;
+      $("#orderContentField").hidden = isLoose;
+      $("#orderRushField").hidden = isLoose;
+      $("#orderCustomerQqField").hidden = !isLoose;
+      $("#orderLooseLeadField").hidden = !isLoose;
+      $("#orderLoosePriceField").hidden = !isLoose;
+      $("#orderPort").disabled = isLoose;
+      $("#orderPort").required = !isLoose;
+      $("#orderCustomerQq").required = isLoose;
+      $("#orderQtyLabel").textContent = isLoose ? "张数" : "下单张数";
+      $("#orderCompleteText").textContent = isLoose ? "已完成" : (isStored ? "已完成并扣储值金额" : "已完成并扣卡");
+    }
+
+    function handleOrderPortSearch() {
+      renderPortOptions($("#orderPort"), "", $("#orderPortSearch").value);
+      if (!$("#orderId").value) $("#orderRushMode").value = defaultRushModeForPort(portById($("#orderPort").value));
+      $("#orderGroup").value = "";
+      updateOrderPreview();
+    }
+
+    function updateOrderPreview() {
+      updateOrderMode();
+      var isLoose = $("#orderSource").value === "loose";
+      if (isLoose) {
+        var fakeLoose = {
+          source: "loose",
+          date: $("#orderDate").value,
+          qty: $("#orderQty").value,
+          leadDays: optionalNumber($("#orderLooseLeadDays").value),
+          unitPrice: optionalNumber($("#orderLooseUnitPrice").value)
+        };
+        var looseDue = dueDateForOrder(fakeLoose);
+        $("#orderDuePreview").textContent = "散单：" + ($("#orderCustomerQq").value.trim() || "未填QQ") + "；" + (looseDue ? "应出图日期：" + looseDue + "；" : "未填写散单工期；") + "请假日不计入工期，完成后不会扣单口余额。";
+        return;
+      }
+      var port = portById($("#orderPort").value);
+      if (port && !$("#orderGroup").value) $("#orderGroup").value = port.groupId || "";
+      var isStored = isStoredPort(port);
+      var content = contentRule($("#orderContentType").value);
+      var rushMode = $("#orderRushMode").value;
+      var deductQty = calcDeductQty($("#orderQty").value, $("#orderContentType").value, rushMode);
+      var fake = {
+        source: "card",
+        portId: $("#orderPort").value,
+        productId: port ? port.productId : "",
+        date: $("#orderDate").value,
+        qty: $("#orderQty").value,
+        leadDays: port ? port.leadDays : null,
+        contentType: $("#orderContentType").value,
+        rushMode: rushMode,
+        deductQty: deductQty,
+        portRushType: port ? port.rushType : ""
+      };
+      var product = port ? productForPort(port) : null;
+      var due = dueDateForOrder(fake);
+      var storedAmount = isStored ? balanceDeduction(fake) : null;
+      $("#orderDuePreview").textContent = product && port ? (isStored
+        ? "应出图日期：" + (due || "未算出") + "；单口工期 " + number(port.leadDays) + " 天；固定停排和请假日不计入工期；" + content.label + "每张折 " + content.points + "p；" + orderRushLabel(rushMode) + "；本次实扣 " + deductQty + "p，扣储值 " + (storedAmount === null ? "未填单价" : money(storedAmount)) + "。"
+        : "应出图日期：" + (due || "未算出") + "；单口工期 " + number(port.leadDays) + " 天；固定停排和请假日不计入工期；" + content.label + "每张扣 " + content.points + "p；" + orderRushLabel(rushMode) + "；本次实扣 " + deductQty + "p。") : "请先选择单口。";
+    }
+
+    function openOrderModal(id, portId) {
+      var order = state.orders.find(function (item) { return item.id === id; });
+      var source = order ? order.source || "card" : "card";
+      var selectedPort = order ? portById(order.portId) : portById(portId);
+      $("#orderModalTitle").textContent = order ? "编辑排单" : "新排单";
+      $("#orderSource").value = source;
+      $("#orderPortSearch").value = selectedPort ? portOptionLabel(selectedPort) : "";
+      renderPortOptions($("#orderPort"), order ? order.portId : portId, "");
+      $("#orderId").value = order ? order.id : "";
+      $("#orderNo").value = order ? order.orderNo || "" : nextOrderNo();
+      $("#orderGroup").value = order ? order.groupId || "" : "";
+      $("#orderDate").value = order ? order.date || dateValue() : dateValue();
+      $("#orderQty").value = order ? order.qty || 1 : 1;
+      $("#orderContentType").value = order && order.contentType && order.contentType !== "legacy" && order.contentType !== "stored" ? order.contentType : "pure";
+      $("#orderRushMode").value = order ? order.rushMode || defaultRushModeForPort(selectedPort) : defaultRushModeForPort(selectedPort);
+      $("#orderCustomerQq").value = order ? order.customerQq || "" : "";
+      $("#orderLooseLeadDays").value = order && order.leadDays != null ? order.leadDays : (source === "loose" ? 7 : "");
+      $("#orderLooseUnitPrice").value = order && order.unitPrice != null ? order.unitPrice : "";
+      $("#orderCompleted").checked = !!(order && order.completed);
+      $("#orderNote").value = order ? order.note || "" : "";
+      updateOrderPreview();
+      openModal("orderModal");
+    }
+
+    function nextOrderNo() {
+      var nums = state.orders.map(function (order) { return parseInt(order.orderNo, 10); }).filter(function (n) { return Number.isFinite(n); });
+      var next = nums.length ? Math.max.apply(null, nums) + 1 : 1;
+      return String(next).padStart(3, "0");
+    }
+
+    function upsertProduct(event) {
+      event.preventDefault();
+      var id = $("#productId").value || uid();
+      var existing = state.products.findIndex(function (item) { return item.id === id; });
+      var product = {
+        id: id,
+        name: $("#productName").value.trim(),
+        type: $("#productType").value,
+        quota: optionalNumber($("#productQuota").value),
+        unitPrice: optionalNumber($("#productUnitPrice").value),
+        stopWeekdays: selectedStopDays(),
+        note: $("#productNote").value.trim(),
+        createdAt: existing >= 0 ? state.products[existing].createdAt : new Date().toISOString()
+      };
+      if (existing >= 0) state.products[existing] = product;
+      else state.products.push(product);
+      save();
+      closeModals();
+      render();
+      toast(existing >= 0 ? "卡项已更新。" : "卡项已新增。");
+    }
+
+    function upsertPort(event) {
+      event.preventDefault();
+      var id = $("#portId").value || uid();
+      var existing = state.ports.findIndex(function (item) { return item.id === id; });
+      var oldPort = existing >= 0 ? state.ports[existing] : null;
+      var productId = $("#portProduct").value || (oldPort ? oldPort.productId : "") || uid();
+      var productName = $("#portProductName").value.trim() || "未命名卡项";
+      var port = {
+        id: id,
+        owner: $("#portOwner").value.trim(),
+        qq: $("#portQq").value.trim(),
+        groupId: $("#portGroup").value.trim(),
+        productId: productId,
+        productName: productName,
+        productType: $("#portProductType").value,
+        unitPrice: optionalNumber($("#portUnitPrice").value),
+        stopWeekdays: selectedPortStopDays(),
+        rushType: $("#portRushType").value,
+        coTeacher: $("#portRushType").value === "joint" ? $("#portCoTeacher").value.trim() : "",
+        leadDays: number($("#portLeadDays").value),
+        expiryDate: $("#portExpiry").value,
+        balance: optionalNumber($("#portBalance").value),
+        extensionDays: number($("#portExtensionDays").value),
+        note: $("#portNote").value.trim(),
+        createdAt: existing >= 0 ? state.ports[existing].createdAt : new Date().toISOString()
+      };
+      if (existing >= 0) state.ports[existing] = port;
+      else state.ports.push(port);
+      save();
+      closeModals();
+      render();
+      toast(existing >= 0 ? "单口已更新。" : "单口已新增。");
+    }
+
+    function restoreCompletedDeduction(order) {
+      if (!order || !order.completed) return;
+      if ((order.source || "card") === "loose") return;
+      var port = portById(order.portId);
+      var deduction = balanceDeduction(order);
+      if (port && hasNumber(port.balance) && deduction !== null) port.balance = number(port.balance) + deduction;
+    }
+
+    function applyCompletedDeduction(order) {
+      if (!order.completed) return true;
+      if ((order.source || "card") === "loose") return true;
+      var port = portById(order.portId);
+      if (!port) {
+        toast("找不到对应单口。");
+        return false;
+      }
+      if (!hasNumber(port.balance)) return true;
+      var deduction = balanceDeduction(order);
+      if (deduction === null) {
+        toast("储值单口需要填写单价，才能扣储值余额。");
+        return false;
+      }
+      if (number(port.balance) < deduction) {
+        toast(orderUsesStoredBalance(order) ? "储值余额不够扣，本次需要 " + money(deduction) + "。" : "这个单口余额不够扣。");
+        return false;
+      }
+      port.balance = number(port.balance) - deduction;
+      return true;
+    }
+
+    function upsertOrder(event) {
+      event.preventDefault();
+      var source = $("#orderSource").value || "card";
+      if (source === "card" && !state.ports.length) {
+        toast("请先新建单口。");
+        return;
+      }
+      var id = $("#orderId").value || uid();
+      var existingIndex = state.orders.findIndex(function (item) { return item.id === id; });
+      var oldOrder = existingIndex >= 0 ? state.orders[existingIndex] : null;
+      var port = source === "card" ? portById($("#orderPort").value) : null;
+      if (source === "card" && !port) {
+        toast("请先选择单口。");
+        return;
+      }
+      if (source === "loose" && !$("#orderCustomerQq").value.trim()) {
+        toast("散单请填写约单人QQ。");
+        return;
+      }
+      var product = port ? productForPort(port) : null;
+      var contentType = source === "card" ? $("#orderContentType").value : "";
+      var rushMode = source === "card" ? $("#orderRushMode").value : "";
+      var qty = number($("#orderQty").value);
+      var deductQty = source === "card" ? calcDeductQty(qty, contentType, rushMode) : qty;
+      var next = {
+        id: id,
+        orderNo: $("#orderNo").value.trim(),
+        source: source,
+        portId: port ? port.id : "",
+        productId: port ? port.productId : "",
+        productName: product ? product.name || "" : "",
+        productType: product ? product.type || "" : "",
+        portRushType: port ? port.rushType || "normal" : "",
+        coTeacher: port ? port.coTeacher || "" : "",
+        stopWeekdays: product && Array.isArray(product.stopWeekdays) ? product.stopWeekdays.slice() : [],
+        customerQq: source === "loose" ? $("#orderCustomerQq").value.trim() : "",
+        leadDays: source === "loose" ? optionalNumber($("#orderLooseLeadDays").value) : (port && hasNumber(port.leadDays) ? number(port.leadDays) : null),
+        unitPrice: source === "loose" ? optionalNumber($("#orderLooseUnitPrice").value) : (product && product.unitPrice != null ? product.unitPrice : null),
+        groupId: $("#orderGroup").value.trim(),
+        date: $("#orderDate").value,
+        qty: qty,
+        contentType: contentType,
+        rushMode: rushMode,
+        deductQty: deductQty,
+        completed: $("#orderCompleted").checked,
+        completedAt: $("#orderCompleted").checked ? (oldOrder && oldOrder.completedAt ? oldOrder.completedAt : dateValue()) : "",
+        note: $("#orderNote").value.trim(),
+        createdAt: oldOrder ? oldOrder.createdAt : new Date().toISOString()
+      };
+      restoreCompletedDeduction(oldOrder);
+      if (!applyCompletedDeduction(next)) {
+        if (oldOrder) applyCompletedDeduction(oldOrder);
+        return;
+      }
+      if (existingIndex >= 0) state.orders[existingIndex] = next;
+      else state.orders.push(next);
+      save();
+      closeModals();
+      render();
+      toast(existingIndex >= 0 ? "排单已更新。" : "排单已新增。");
+    }
+
+    function deleteProduct(id) {
+      var product = productById(id);
+      if (!product) {
+        state.pendingDeleteProductId = "";
+        render();
+        toast("这个卡项已经不存在。");
+        return;
+      }
+      if (state.pendingDeleteProductId !== id) {
+        state.pendingDeleteProductId = id;
+        state.pendingDeletePortId = "";
+        state.pendingDeleteOrderId = "";
+        renderProducts();
+        toast("再点一次红色按钮确认删除「" + (product.name || "这个卡项") + "」。");
+        return;
+      }
+      state.pendingDeleteProductId = "";
+      state.ports.forEach(function (port) {
+        if (port.productId !== id) return;
+        port.productName = product.name || port.productName || "";
+        port.productType = product.type || port.productType || "";
+        port.unitPrice = hasNumber(product.unitPrice) ? number(product.unitPrice) : port.unitPrice;
+        port.stopWeekdays = Array.isArray(product.stopWeekdays) ? product.stopWeekdays.slice() : (Array.isArray(port.stopWeekdays) ? port.stopWeekdays : []);
+      });
+      state.orders.forEach(function (order) {
+        if (order.productId !== id) return;
+        order.productName = product.name || order.productName || "";
+        order.productType = product.type || order.productType || "";
+        order.unitPrice = hasNumber(order.unitPrice) ? order.unitPrice : (hasNumber(product.unitPrice) ? number(product.unitPrice) : null);
+        order.stopWeekdays = Array.isArray(product.stopWeekdays) ? product.stopWeekdays.slice() : (Array.isArray(order.stopWeekdays) ? order.stopWeekdays : []);
+      });
+      state.products = state.products.filter(function (item) { return item.id !== id; });
+      save();
+      render();
+      toast("卡项已删除，已有单口记录已保留。");
+    }
+
+    function deletePort(id) {
+      var port = portById(id);
+      if (!port) {
+        state.pendingDeletePortId = "";
+        render();
+        toast("这个单口已经不存在。");
+        return;
+      }
+      if (state.pendingDeletePortId !== id) {
+        state.pendingDeleteProductId = "";
+        state.pendingDeletePortId = id;
+        state.pendingDeleteOrderId = "";
+        renderPorts();
+        toast("再点一次红色按钮确认删除「" + (port.owner || "这个单口") + "」。排单记录会保留。");
+        return;
+      }
+      state.pendingDeletePortId = "";
+      state.ports = state.ports.filter(function (item) { return item.id !== id; });
+      save();
+      render();
+      toast("单口已删除。");
+    }
+
+    window.__deletePortInlineHandled = false;
+    window.__deletePortFromButton = function (button) {
+      window.__deletePortInlineHandled = true;
+      deletePort(button.getAttribute("data-delete-port"));
+      window.setTimeout(function () {
+        window.__deletePortInlineHandled = false;
+      }, 0);
+      return false;
+    };
+
+    window.__deleteProductFromButton = function (button) {
+      window.__deletePortInlineHandled = true;
+      deleteProduct(button.getAttribute("data-delete-product"));
+      window.setTimeout(function () {
+        window.__deletePortInlineHandled = false;
+      }, 0);
+      return false;
+    };
+
+    window.__deleteOrderFromButton = function (button) {
+      window.__deletePortInlineHandled = true;
+      deleteOrder(button.getAttribute("data-delete-order"));
+      window.setTimeout(function () {
+        window.__deletePortInlineHandled = false;
+      }, 0);
+      return false;
+    };
+
+    function deleteOrder(id) {
+      var order = state.orders.find(function (item) { return item.id === id; });
+      if (!order) {
+        state.pendingDeleteOrderId = "";
+        render();
+        toast("这条排单已经不存在。");
+        return;
+      }
+      if (state.pendingDeleteOrderId !== id) {
+        state.pendingDeleteProductId = "";
+        state.pendingDeletePortId = "";
+        state.pendingDeleteOrderId = id;
+        render();
+        toast("再点一次红色按钮确认删除单号「" + (order.orderNo || "未填") + "」。");
+        return;
+      }
+      state.pendingDeleteOrderId = "";
+      restoreCompletedDeduction(order);
+      state.orders = state.orders.filter(function (item) { return item.id !== id; });
+      save();
+      render();
+      toast(order.completed && (order.source || "card") !== "loose" ? "排单已删除，扣卡已返还。" : "排单已删除。");
+    }
+
+    function toggleOrder(id) {
+      var order = state.orders.find(function (item) { return item.id === id; });
+      if (!order) return;
+      if (order.completed) {
+        restoreCompletedDeduction(order);
+        order.completed = false;
+        order.completedAt = "";
+        toast((order.source || "card") === "loose" ? "已改回待完成。" : "已改回待完成，扣卡已返还。");
+      } else {
+        order.completed = true;
+        order.completedAt = dateValue();
+        if (!applyCompletedDeduction(order)) {
+          order.completed = false;
+          order.completedAt = "";
+          return;
+        }
+        toast((order.source || "card") === "loose" ? "散单已完成。" : "已完成，余额已扣除。");
+      }
+      save();
+      render();
+    }
+
+    function extendPort(id) {
+      var port = portById(id);
+      if (!port) return;
+      var text = window.prompt("给这个单口额外延期几天？", "7");
+      if (text === null) return;
+      var days = Math.max(0, number(text));
+      port.extensionDays = number(port.extensionDays) + days;
+      save();
+      render();
+      toast("单口已延期 " + days + " 天。");
+    }
+
+    function updateLeavePreview() {
+      var days = leaveDuration($("#leaveStart").value, $("#leaveEnd").value);
+      $("#leavePreview").textContent = days
+        ? "本次请假共 " + days + " 天，会统一加入所有单口延期，也不会计入排单工期。"
+        : "请选择正确的请假开始和结束日期。";
+    }
+
+    function openLeaveModal() {
+      $("#leaveStart").value = dateValue();
+      $("#leaveEnd").value = dateValue();
+      $("#leaveNote").value = "";
+      updateLeavePreview();
+      openModal("leaveModal");
+    }
+
+    function submitLeave(event) {
+      event.preventDefault();
+      var start = $("#leaveStart").value;
+      var end = $("#leaveEnd").value;
+      var days = leaveDuration(start, end);
+      if (!days) {
+        toast("请填写正确的请假时间。");
+        return;
+      }
+      state.leaves.push({
+        id: uid(),
+        startDate: start,
+        endDate: end,
+        days: days,
+        note: $("#leaveNote").value.trim(),
+        createdAt: new Date().toISOString()
+      });
+      state.ports.forEach(function (port) {
+        port.extensionDays = number(port.extensionDays) + days;
+      });
+      save();
+      closeModals();
+      render();
+      toast("已请假 " + days + " 天，所有单口到期已后移。");
+    }
+
+    function backupPayload() {
+      return JSON.stringify({
+        app: "图编单口排单管家",
+        version: APP_VERSION,
+        exportedAt: new Date().toISOString(),
+        products: state.products,
+        ports: state.ports,
+        orders: state.orders,
+        leaves: state.leaves
+      }, null, 2);
+    }
+
+    function downloadBackupFallback(payload, filename) {
+      var blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function makeBackupFile(payload, filename) {
+      try {
+        return new File([payload], filename, { type: "application/json" });
+      } catch (error) {
+        return null;
+      }
+    }
+
+    async function exportBackup() {
+      var payload = backupPayload();
+      var filename = "图编排单备份-" + dateValue() + ".json";
+      if (window.showSaveFilePicker) {
+        try {
+          var handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [{
+              description: "JSON 备份文件",
+              accept: { "application/json": [".json"] }
+            }]
+          });
+          var writable = await handle.createWritable();
+          await writable.write(new Blob([payload], { type: "application/json;charset=utf-8" }));
+          await writable.close();
+          toast("备份已保存到你选择的位置：" + filename + "。恢复时选择这个文件。");
+          return;
+        } catch (error) {
+          if (error && error.name === "AbortError") {
+            toast("备份已取消。");
+            return;
+          }
+          downloadBackupFallback(payload, filename);
+          toast("保存窗口没能打开，已改为下载：" + filename + "。通常在浏览器下载文件夹。");
+          return;
+        }
+      }
+      var file = makeBackupFile(payload, filename);
+      if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: "图编排单备份",
+            text: "请选择“存储到文件”保存备份，恢复时再选择这个 JSON。",
+            files: [file]
+          });
+          toast("已打开分享面板。建议选择“存储到文件”，恢复时选这个 JSON。");
+          return;
+        } catch (error) {
+          if (error && error.name === "AbortError") {
+            toast("备份已取消。");
+            return;
+          }
+        }
+      }
+      downloadBackupFallback(payload, filename);
+      toast("当前浏览器不支持选择保存路径，已下载：" + filename + "。通常在浏览器下载文件夹，恢复时选择它。");
+    }
+
+    function readBackupFile(file) {
+      if (file && typeof file.text === "function") {
+        return file.text();
+      }
+      return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function () { resolve(String(reader.result || "")); };
+        reader.onerror = function () { reject(reader.error || new Error("文件读取失败")); };
+        reader.readAsText(file, "utf-8");
+      });
+    }
+
+    async function importBackup(file) {
+      if (!file) {
+        toast("没有选到文件，请选择之前备份出来的 JSON。");
+        return;
+      }
+      if (!window.confirm("恢复会覆盖当前数据，确定继续吗？")) return;
+      try {
+        var text = await readBackupFile(file);
+        if (!String(text || "").trim()) {
+          toast("恢复失败：这个文件是空的，请重新选择备份 JSON。");
+          return;
+        }
+        var data = JSON.parse(String(text || ""));
+        state.products = Array.isArray(data.products) ? data.products : [];
+        state.ports = Array.isArray(data.ports) ? data.ports : [];
+        state.orders = Array.isArray(data.orders) ? data.orders : [];
+        state.leaves = Array.isArray(data.leaves) ? data.leaves : [];
+        migrateLegacyPortExpiry();
+        save();
+        render();
+        toast("备份已恢复：" + (file.name || "JSON 文件") + "。");
+      } catch (error) {
+        toast("恢复失败：文件打不开或不是正确的 JSON。请先把备份存到“文件”App 后再选。");
+      }
+    }
+
+    async function openRestorePicker() {
+      if (window.showOpenFilePicker) {
+        try {
+          var handles = await window.showOpenFilePicker({
+            multiple: false,
+            types: [{
+              description: "JSON 备份文件",
+              accept: { "application/json": [".json"], "text/plain": [".json"] }
+            }]
+          });
+          if (handles && handles[0]) {
+            importBackup(await handles[0].getFile());
+            return;
+          }
+        } catch (error) {
+          if (error && error.name === "AbortError") {
+            toast("恢复已取消。");
+            return;
+          }
+        }
+      }
+      var input = $("#importFile");
+      input.value = "";
+      input.click();
+    }
+
+    function loadSample() {
+      if ((state.ports.length || state.orders.length) && !window.confirm("会追加示例数据，继续吗？")) return;
+      var productId = uid();
+      var portId = uid();
+      state.ports.push({
+        id: portId,
+        owner: "示例老板A",
+        qq: "123456789",
+        groupId: "987654321",
+        productId: productId,
+        productName: "年卡",
+        productType: "溶图卡",
+        unitPrice: 8,
+        stopWeekdays: ["0"],
+        rushType: "normal",
+        leadDays: 7,
+        expiryDate: dateValue(addDays(today(), 120)),
+        balance: 20,
+        extensionDays: 0,
+        note: "",
+        createdAt: new Date().toISOString()
+      });
+      state.orders.push({
+        id: uid(),
+        orderNo: "001",
+        source: "card",
+        portId: portId,
+        productId: productId,
+        productName: "年卡",
+        productType: "溶图卡",
+        stopWeekdays: ["0"],
+        customerQq: "",
+        leadDays: 7,
+        unitPrice: 8,
+        groupId: "987654321",
+        date: dateValue(),
+        qty: 2,
+        contentType: "pure",
+        rushMode: "normal",
+        deductQty: 2,
+        completed: false,
+        completedAt: "",
+        note: "示例待做",
+        createdAt: new Date().toISOString()
+      });
+      save();
+      render();
+      toast("示例已加入。");
+    }
+
+    function bindEvents() {
+      $$(".nav-btn").forEach(function (button) {
+        button.addEventListener("click", function () {
+          state.view = button.dataset.view;
+          render();
+        });
+      });
+      $("#searchInput").addEventListener("input", function (event) {
+        state.query = event.target.value;
+        render();
+      });
+      $("#newPortBtn").addEventListener("click", function () { openPortModal(); });
+      $("#newOrderBtn").addEventListener("click", function () { openOrderModal(); });
+      $("#leaveBtn").addEventListener("click", openLeaveModal);
+      $("#sampleBtn").addEventListener("click", loadSample);
+      $("#backupBtn").addEventListener("click", exportBackup);
+      $("#backupSideBtn").addEventListener("click", exportBackup);
+      $("#restoreBtn").addEventListener("click", openRestorePicker);
+      $("#restoreSideBtn").addEventListener("click", openRestorePicker);
+      $("#importFile").addEventListener("change", function (event) {
+        importBackup(event.target.files[0]);
+        event.target.value = "";
+      });
+      $("#productForm").addEventListener("submit", upsertProduct);
+      $("#portForm").addEventListener("submit", upsertPort);
+      $("#orderForm").addEventListener("submit", upsertOrder);
+      $("#leaveForm").addEventListener("submit", submitLeave);
+      ["portProductName", "portProductType", "portUnitPrice", "portCoTeacher"].forEach(function (id) {
+        $("#" + id).addEventListener("input", updatePortPreview);
+        $("#" + id).addEventListener("change", updatePortPreview);
+      });
+      $$("#portStopDays input").forEach(function (input) {
+        input.addEventListener("change", updatePortPreview);
+      });
+      $("#portExpiry").addEventListener("input", updatePortPreview);
+      $("#portExtensionDays").addEventListener("input", updatePortPreview);
+      $("#portRushType").addEventListener("change", updatePortPreview);
+      $("#portLeadDays").addEventListener("input", updatePortPreview);
+      $$("#portFilters [data-port-filter]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          state.portFilter = button.dataset.portFilter || "all";
+          renderPorts();
+        });
+      });
+      ["leaveStart", "leaveEnd"].forEach(function (id) {
+        $("#" + id).addEventListener("input", updateLeavePreview);
+      });
+      $("#portGrid").addEventListener("click", function (event) {
+        if (window.__deletePortInlineHandled) return;
+        var target = closestFromEvent(event, "[data-delete-port]");
+        if (!target) return;
+        event.preventDefault();
+        event.stopPropagation();
+        deletePort(target.getAttribute("data-delete-port"));
+      });
+      $("#orderSource").addEventListener("change", function () {
+        if ($("#orderSource").value === "card" && !$("#orderId").value) {
+          $("#orderRushMode").value = defaultRushModeForPort(portById($("#orderPort").value));
+        }
+        updateOrderPreview();
+      });
+      $("#orderPortSearch").addEventListener("input", handleOrderPortSearch);
+      $("#orderPort").addEventListener("change", function () {
+        var port = portById($("#orderPort").value);
+        $("#orderPortSearch").value = port ? portOptionLabel(port) : $("#orderPortSearch").value;
+        if (!$("#orderId").value) $("#orderRushMode").value = defaultRushModeForPort(port);
+        $("#orderGroup").value = "";
+        updateOrderPreview();
+      });
+      ["orderDate", "orderQty", "orderContentType", "orderRushMode", "orderCustomerQq", "orderLooseLeadDays", "orderLooseUnitPrice"].forEach(function (id) {
+        $("#" + id).addEventListener("input", updateOrderPreview);
+      });
+      ["orderContentType", "orderRushMode"].forEach(function (id) {
+        $("#" + id).addEventListener("change", updateOrderPreview);
+      });
+      $("[data-close-modal]").addEventListener("click", closeModals);
+      $$("#productModal [data-close-modal], #portModal [data-close-modal], #orderModal [data-close-modal], #leaveModal [data-close-modal]").forEach(function (button) {
+        button.addEventListener("click", closeModals);
+      });
+      $("#modalBackdrop").addEventListener("click", closeModals);
+      document.body.addEventListener("click", function (event) {
+        if (window.__deletePortInlineHandled) return;
+        var target;
+        target = closestFromEvent(event, "[data-edit-product]");
+        if (target) return openProductModal(target.dataset.editProduct);
+        target = closestFromEvent(event, "[data-delete-product]");
+        if (target) return deleteProduct(target.dataset.deleteProduct);
+        target = closestFromEvent(event, "[data-new-port-product]");
+        if (target) return openPortModal("", target.dataset.newPortProduct);
+        target = closestFromEvent(event, "[data-delete-port]");
+        if (target) return deletePort(target.getAttribute("data-delete-port"));
+        target = closestFromEvent(event, "[data-edit-port]");
+        if (target) return openPortModal(target.dataset.editPort);
+        target = closestFromEvent(event, "[data-extend-port]");
+        if (target) return extendPort(target.dataset.extendPort);
+        target = closestFromEvent(event, "[data-order-port]");
+        if (target) return openOrderModal("", target.dataset.orderPort);
+        target = closestFromEvent(event, "[data-edit-order]");
+        if (target) return openOrderModal(target.dataset.editOrder);
+        target = closestFromEvent(event, "[data-delete-order]");
+        if (target) return deleteOrder(target.dataset.deleteOrder);
+        target = closestFromEvent(event, "[data-toggle-order]");
+        if (target) return toggleOrder(target.dataset.toggleOrder);
+      });
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") closeModals();
+      });
+    }
+
+    initRuntime();
+    load();
+    bindEvents();
+    render();
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("editor-sw.js").catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>

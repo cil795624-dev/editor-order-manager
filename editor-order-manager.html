@@ -930,6 +930,10 @@
             <h3>待办</h3>
             <span id="todoCount">0 张</span>
           </div>
+          <div class="panel-filters" id="todoSortFilters">
+            <button class="btn small filter-btn active" data-todo-sort="due">按交稿日期</button>
+            <button class="btn small filter-btn" data-todo-sort="orderNo">按单号</button>
+          </div>
           <div class="record-list" id="todoList"></div>
         </section>
       </section>
@@ -1283,6 +1287,7 @@
       portFilter: "all",
       portKindFilter: "all",
       portJointFilter: "all",
+      todoSort: "due",
       pendingDeleteProductId: "",
       pendingDeleteOrderId: "",
       pendingDeletePortId: ""
@@ -1932,12 +1937,36 @@
         String(a.date || "").localeCompare(String(b.date || ""));
     }
 
+    function leadingOrderNoNumber(order) {
+      var text = String(order && order.orderNo || "");
+      var match = text.match(/\d+/);
+      return match ? Number(match[0]) : 999999999;
+    }
+
+    function createdAtOrder(a, b) {
+      var ta = Date.parse(a && a.createdAt || "");
+      var tb = Date.parse(b && b.createdAt || "");
+      ta = Number.isFinite(ta) ? ta : 0;
+      tb = Number.isFinite(tb) ? tb : 0;
+      return ta - tb;
+    }
+
     function todoOrder(a, b) {
       var da = dueDateForOrder(a);
       var db = dueDateForOrder(b);
       var ra = da ? diffDays(parseDate(da), today()) : 999999;
       var rb = db ? diffDays(parseDate(db), today()) : 999999;
-      return ra - rb || naturalOrder(a, b);
+      return ra - rb || createdAtOrder(a, b) || naturalOrder(a, b);
+    }
+
+    function todoOrderNoOrder(a, b) {
+      var na = leadingOrderNoNumber(a);
+      var nb = leadingOrderNoNumber(b);
+      return na - nb || createdAtOrder(a, b) || naturalOrder(a, b);
+    }
+
+    function currentTodoSorter() {
+      return state.todoSort === "orderNo" ? todoOrderNoOrder : todoOrder;
     }
 
     function matchesQuery(text) {
@@ -2322,11 +2351,30 @@
     }
 
     function renderTodos() {
+      $$("#todoSortFilters [data-todo-sort]").forEach(function (button) {
+        button.classList.toggle("active", button.dataset.todoSort === state.todoSort);
+      });
       var todos = state.orders.filter(function (order) { return !order.completed; }).filter(function (order) {
         var port = portById(order.portId);
         return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, orderRule(order).label, orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : ""].join(" "));
-      }).sort(todoOrder);
-      $("#todoList").innerHTML = todos.length ? todoSummaryMarkup(todos) + todos.map(function (order) { return orderMarkup(order, true); }).join("") : emptyMarkup("今天没有待办", "未完成排单会按应交日期排在这里。");
+      }).sort(currentTodoSorter());
+      $("#todoList").innerHTML = todos.length ? todoSummaryMarkup(todos) + todoListMarkup(todos) : emptyMarkup("今天没有待办", "未完成排单会按应交日期排在这里。");
+    }
+
+    function todoGroupMarkup(title, orders) {
+      if (!orders.length) return "";
+      var qty = orders.reduce(function (sum, order) { return sum + number(order.qty); }, 0);
+      return '<div class="panel-filters"><span class="pill blue">' + escapeHtml(title) + '</span><span class="pill">' + orders.length + ' 条 / ' + qty + ' 张</span></div>' +
+        orders.map(function (order) { return orderMarkup(order, true); }).join("");
+    }
+
+    function todoListMarkup(todos) {
+      if (state.todoSort !== "orderNo") {
+        return todos.map(function (order) { return orderMarkup(order, true); }).join("");
+      }
+      var rushOrders = todos.filter(function (order) { return (order.rushMode || "normal") === "rush"; }).sort(todoOrderNoOrder);
+      var normalOrders = todos.filter(function (order) { return (order.rushMode || "normal") !== "rush"; }).sort(todoOrderNoOrder);
+      return todoGroupMarkup("加急待办", rushOrders) + todoGroupMarkup("普通待办", normalOrders);
     }
 
     function todoSummaryMarkup(todos) {
@@ -3241,6 +3289,12 @@
         var value = button.dataset.portJointFilter || "all";
         state.portJointFilter = value === "all" ? "all" : decodeURIComponent(value);
         renderPorts();
+      });
+      $("#todoSortFilters").addEventListener("click", function (event) {
+        var button = closestFromEvent(event, "[data-todo-sort]");
+        if (!button) return;
+        state.todoSort = button.dataset.todoSort || "due";
+        renderTodos();
       });
       ["leaveStart", "leaveEnd"].forEach(function (id) {
         $("#" + id).addEventListener("input", updateLeavePreview);

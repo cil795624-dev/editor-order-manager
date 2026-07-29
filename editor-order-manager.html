@@ -1128,6 +1128,7 @@
             <select id="orderRushMode">
               <option value="normal">非加急</option>
               <option value="rush">加急（扣卡x2）</option>
+              <option value="rushCard">加急卡</option>
             </select>
           </div>
           <div class="field" id="orderCustomerQqField" hidden>
@@ -1599,6 +1600,11 @@
           order.portRushType = port.rushType || "normal";
           changed = true;
         }
+        if (!order.completed && order.rushMode === "rush" && (order.portRushType || (port ? port.rushType : "")) === "rush") {
+          order.rushMode = "rushCard";
+          order.deductQty = calcDeductQty(order.qty, order.contentType || "pure", "rushCard");
+          changed = true;
+        }
         if (!order.coTeacher && port && port.coTeacher) {
           order.coTeacher = port.coTeacher;
           changed = true;
@@ -1720,11 +1726,21 @@
     }
 
     function orderRushLabel(value) {
-      return value === "rush" ? "加急x2" : "非加急";
+      var map = {
+        normal: "非加急",
+        rush: "加急（扣卡x2）",
+        rushCard: "加急卡（正常扣卡）"
+      };
+      return map[value] || "非加急";
     }
 
     function defaultRushModeForPort(port) {
-      return port && port.rushType === "rush" ? "rush" : "normal";
+      return port && port.rushType === "rush" ? "rushCard" : "normal";
+    }
+
+    function isUrgentOrder(order) {
+      var mode = order && order.rushMode || "normal";
+      return mode === "rush" || mode === "rushCard";
     }
 
     function calcDeductQty(qty, contentType, rushMode) {
@@ -1978,7 +1994,7 @@
     function titleForView() {
       var map = {
         ports: ["单口", "按实际到期时间由近到远排序，结合余额和工期标记疑似危险单口。"],
-        orders: ["排单", "选择内容类型和是否加急后自动计算扣卡，固定停排和请假不计入工期。"],
+        orders: ["排单", "选择内容类型和排单状态后自动计算扣卡：临时加急x2，加急卡正常扣卡。"],
         todos: ["待办", "可按交稿日期混排，也可按单号分成加急待办和普通待办。"],
         stats: ["统计", "看单口构成、联名老师分布，以及当前一共还欠多少 p。"]
       };
@@ -2377,8 +2393,8 @@
       if (state.todoSort !== "orderNo") {
         return todos.map(function (order) { return orderMarkup(order, true); }).join("");
       }
-      var rushOrders = todos.filter(function (order) { return (order.rushMode || "normal") === "rush"; }).sort(todoOrderNoOrder);
-      var normalOrders = todos.filter(function (order) { return (order.rushMode || "normal") !== "rush"; }).sort(todoOrderNoOrder);
+      var rushOrders = todos.filter(isUrgentOrder).sort(todoOrderNoOrder);
+      var normalOrders = todos.filter(function (order) { return !isUrgentOrder(order); }).sort(todoOrderNoOrder);
       return todoGroupMarkup("加急待办", rushOrders) + todoGroupMarkup("普通待办", normalOrders);
     }
 

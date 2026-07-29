@@ -872,6 +872,14 @@
             <button class="btn small filter-btn" data-port-filter="urgent">快过期单口</button>
             <button class="btn small filter-btn" data-port-filter="danger">危险单口</button>
           </div>
+          <div class="panel-filters" id="portKindFilters">
+            <button class="btn small filter-btn active" data-port-kind-filter="all">全部类别</button>
+            <button class="btn small filter-btn" data-port-kind-filter="normal">普通单口</button>
+            <button class="btn small filter-btn" data-port-kind-filter="rush">加急单口</button>
+            <button class="btn small filter-btn" data-port-kind-filter="joint">联名单口</button>
+            <button class="btn small filter-btn" data-port-kind-filter="stored">储值单口</button>
+          </div>
+          <div class="panel-filters" id="portJointFilters" hidden></div>
           <div class="grid" id="portGrid"></div>
         </section>
       </section>
@@ -1213,6 +1221,8 @@
       view: "ports",
       query: "",
       portFilter: "all",
+      portKindFilter: "all",
+      portJointFilter: "all",
       pendingDeleteProductId: "",
       pendingDeleteOrderId: "",
       pendingDeletePortId: ""
@@ -2005,10 +2015,66 @@
       }).join("");
     }
 
+    function jointTeacherName(port) {
+      return (port && port.coTeacher ? String(port.coTeacher).trim() : "") || "未填联名老师";
+    }
+
+    function matchesPortKind(port) {
+      var kind = state.portKindFilter || "all";
+      if (kind === "all") return true;
+      if (kind === "normal") return (port.rushType || "normal") === "normal";
+      if (kind === "rush") return port.rushType === "rush";
+      if (kind === "joint") return isJointPort(port);
+      if (kind === "stored") return isStoredPort(port);
+      return true;
+    }
+
+    function jointTeacherGroups() {
+      var groups = state.ports.filter(isJointPort).reduce(function (map, port) {
+        var name = jointTeacherName(port);
+        map[name] = (map[name] || 0) + 1;
+        return map;
+      }, {});
+      return Object.keys(groups).sort(function (a, b) {
+        return groups[b] - groups[a] || a.localeCompare(b, "zh-Hans-CN");
+      }).map(function (name) {
+        return { name: name, count: groups[name] };
+      });
+    }
+
+    function renderPortFilters() {
+      $$("#portFilters [data-port-filter]").forEach(function (button) {
+        button.classList.toggle("active", button.dataset.portFilter === state.portFilter);
+      });
+      $$("#portKindFilters [data-port-kind-filter]").forEach(function (button) {
+        button.classList.toggle("active", button.dataset.portKindFilter === (state.portKindFilter || "all"));
+      });
+      var jointFilters = $("#portJointFilters");
+      if ((state.portKindFilter || "all") !== "joint") {
+        state.portJointFilter = "all";
+        jointFilters.hidden = true;
+        jointFilters.innerHTML = "";
+        return;
+      }
+      var groups = jointTeacherGroups();
+      if (state.portJointFilter !== "all" && !groups.some(function (group) { return group.name === state.portJointFilter; })) {
+        state.portJointFilter = "all";
+      }
+      jointFilters.hidden = groups.length === 0;
+      jointFilters.innerHTML = groups.length ? [
+        '<button class="btn small filter-btn ' + (state.portJointFilter === "all" ? "active" : "") + '" data-port-joint-filter="all">全部联名老师</button>'
+      ].concat(groups.map(function (group) {
+        var active = state.portJointFilter === group.name ? " active" : "";
+        return '<button class="btn small filter-btn' + active + '" data-port-joint-filter="' + encodeURIComponent(group.name) + '">' + escapeHtml(group.name) + ' · ' + group.count + '个</button>';
+      })).join("") : "";
+    }
+
     function filteredPorts() {
       return state.ports.filter(function (port) {
         if (state.portFilter === "urgent" && !isUrgentPort(port)) return false;
         if (state.portFilter === "danger" && !isDangerPort(port)) return false;
+        if (!matchesPortKind(port)) return false;
+        if ((state.portKindFilter || "all") === "joint" && state.portJointFilter !== "all" && jointTeacherName(port) !== state.portJointFilter) return false;
         return matchesQuery([port.owner, port.qq, port.groupId, port.coTeacher, port.note, rushTypeLabel(port.rushType)].join(" "));
       }).sort(function (a, b) {
         var sa = portStatus(a);
@@ -2020,13 +2086,12 @@
     }
 
     function renderPorts() {
+      renderPortFilters();
       var ports = filteredPorts();
       $("#portCount").textContent = ports.length + " 个";
-      $$("#portFilters [data-port-filter]").forEach(function (button) {
-        button.classList.toggle("active", button.dataset.portFilter === state.portFilter);
-      });
       if (!ports.length) {
-        $("#portGrid").innerHTML = emptyMarkup(state.portFilter === "all" ? "还没有单口" : "没有符合条件的单口", state.portFilter === "all" ? "录入老板 QQ、群号、余额和到期时间后会出现在这里。" : "切回全部单口可以查看完整列表。");
+        var filtered = state.portFilter !== "all" || (state.portKindFilter || "all") !== "all" || state.portJointFilter !== "all";
+        $("#portGrid").innerHTML = emptyMarkup(filtered ? "没有符合条件的单口" : "还没有单口", filtered ? "切回全部单口和全部类别可以查看完整列表。" : "录入老板 QQ、群号、余额和到期时间后会出现在这里。");
         return;
       }
       $("#portGrid").innerHTML = ports.map(function (port) {
@@ -2916,11 +2981,25 @@
       $("#portExtensionDays").addEventListener("input", updatePortPreview);
       $("#portRushType").addEventListener("change", updatePortPreview);
       $("#portLeadDays").addEventListener("input", updatePortPreview);
-      $$("#portFilters [data-port-filter]").forEach(function (button) {
-        button.addEventListener("click", function () {
-          state.portFilter = button.dataset.portFilter || "all";
-          renderPorts();
-        });
+      $("#portFilters").addEventListener("click", function (event) {
+        var button = closestFromEvent(event, "[data-port-filter]");
+        if (!button) return;
+        state.portFilter = button.dataset.portFilter || "all";
+        renderPorts();
+      });
+      $("#portKindFilters").addEventListener("click", function (event) {
+        var button = closestFromEvent(event, "[data-port-kind-filter]");
+        if (!button) return;
+        state.portKindFilter = button.dataset.portKindFilter || "all";
+        if (state.portKindFilter !== "joint") state.portJointFilter = "all";
+        renderPorts();
+      });
+      $("#portJointFilters").addEventListener("click", function (event) {
+        var button = closestFromEvent(event, "[data-port-joint-filter]");
+        if (!button) return;
+        var value = button.dataset.portJointFilter || "all";
+        state.portJointFilter = value === "all" ? "all" : decodeURIComponent(value);
+        renderPorts();
       });
       ["leaveStart", "leaveEnd"].forEach(function (id) {
         $("#" + id).addEventListener("input", updateLeavePreview);

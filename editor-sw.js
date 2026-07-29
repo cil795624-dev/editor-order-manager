@@ -1,4 +1,4 @@
-const EDITOR_CACHE = "editor-order-manager-ios-20260729-stats";
+const EDITOR_CACHE = "editor-order-manager-ios-20260729-kindfilters";
 const EDITOR_ASSETS = [
   "editor-order-manager.html",
   "editor-manifest.webmanifest",

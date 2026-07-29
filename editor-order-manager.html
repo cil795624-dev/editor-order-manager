@@ -463,6 +463,11 @@
       gap: 10px;
     }
 
+    .record-list > .panel-filters {
+      padding: 0;
+      border-bottom: 0;
+    }
+
     .record {
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -929,10 +934,6 @@
           <div class="panel-head">
             <h3>待办</h3>
             <span id="todoCount">0 张</span>
-          </div>
-          <div class="panel-filters" id="todoSortFilters">
-            <button class="btn small filter-btn active" data-todo-sort="due">按交稿日期</button>
-            <button class="btn small filter-btn" data-todo-sort="orderNo">按单号</button>
           </div>
           <div class="record-list" id="todoList"></div>
         </section>
@@ -1978,7 +1979,7 @@
       var map = {
         ports: ["单口", "按实际到期时间由近到远排序，结合余额和工期标记疑似危险单口。"],
         orders: ["排单", "选择内容类型和是否加急后自动计算扣卡，固定停排和请假不计入工期。"],
-        todos: ["待办", "未完成排单按应交日期排序，越紧急越靠前，同一天再按单号排。"],
+        todos: ["待办", "可按交稿日期混排，也可按单号分成加急待办和普通待办。"],
         stats: ["统计", "看单口构成、联名老师分布，以及当前一共还欠多少 p。"]
       };
       return map[state.view] || map.ports;
@@ -2351,14 +2352,18 @@
     }
 
     function renderTodos() {
-      $$("#todoSortFilters [data-todo-sort]").forEach(function (button) {
-        button.classList.toggle("active", button.dataset.todoSort === state.todoSort);
-      });
       var todos = state.orders.filter(function (order) { return !order.completed; }).filter(function (order) {
         var port = portById(order.portId);
         return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, orderRule(order).label, orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : ""].join(" "));
       }).sort(currentTodoSorter());
-      $("#todoList").innerHTML = todos.length ? todoSummaryMarkup(todos) + todoListMarkup(todos) : emptyMarkup("今天没有待办", "未完成排单会按应交日期排在这里。");
+      $("#todoList").innerHTML = todoSortMarkup() + (todos.length ? todoSummaryMarkup(todos) + todoListMarkup(todos) : emptyMarkup("今天没有待办", "未完成排单会按应交日期排在这里。"));
+    }
+
+    function todoSortMarkup() {
+      return '<div class="panel-filters" id="todoSortInline">' +
+        '<button type="button" class="btn small filter-btn ' + (state.todoSort === "due" ? "active" : "") + '" data-todo-sort="due">按交稿日期</button>' +
+        '<button type="button" class="btn small filter-btn ' + (state.todoSort === "orderNo" ? "active" : "") + '" data-todo-sort="orderNo">按单号</button>' +
+        '</div>';
     }
 
     function todoGroupMarkup(title, orders) {
@@ -3290,7 +3295,7 @@
         state.portJointFilter = value === "all" ? "all" : decodeURIComponent(value);
         renderPorts();
       });
-      $("#todoSortFilters").addEventListener("click", function (event) {
+      $("#todoList").addEventListener("click", function (event) {
         var button = closestFromEvent(event, "[data-todo-sort]");
         if (!button) return;
         state.todoSort = button.dataset.todoSort || "due";

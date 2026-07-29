@@ -1840,7 +1840,7 @@
       var guard = 0;
       while (done < lead && guard < 730) {
         d = addDays(d, 1);
-        if (!isBlockedWorkDate(d, product)) done += 1;
+        if (!isLeaveDay(d)) done += 1;
         guard += 1;
       }
       return d;
@@ -2690,8 +2690,8 @@
       var due = dueDateForOrder(fake);
       var storedAmount = isStored ? balanceDeduction(fake) : null;
       $("#orderDuePreview").textContent = product && port ? (isStored
-        ? "应出图日期：" + (due || "未算出") + "；单口工期 " + number(port.leadDays) + " 天；固定停排和请假日不计入工期；" + content.label + "每张折 " + content.points + "p；" + orderRushLabel(rushMode) + "；本次实扣 " + deductQty + "p，扣储值 " + (storedAmount === null ? "未填单价" : money(storedAmount)) + "。"
-        : "应出图日期：" + (due || "未算出") + "；单口工期 " + number(port.leadDays) + " 天；固定停排和请假日不计入工期；" + content.label + "每张扣 " + content.points + "p；" + orderRushLabel(rushMode) + "；本次实扣 " + deductQty + "p。") : "请先选择单口。";
+        ? "应出图日期：" + (due || "未算出") + "；单口工期 " + number(port.leadDays) + " 天；请假日不计入工期，固定停排日仍计入工期；" + content.label + "每张折 " + content.points + "p；" + orderRushLabel(rushMode) + "；本次实扣 " + deductQty + "p，扣储值 " + (storedAmount === null ? "未填单价" : money(storedAmount)) + "。"
+        : "应出图日期：" + (due || "未算出") + "；单口工期 " + number(port.leadDays) + " 天；请假日不计入工期，固定停排日仍计入工期；" + content.label + "每张扣 " + content.points + "p；" + orderRushLabel(rushMode) + "；本次实扣 " + deductQty + "p。") : "请先选择单口。";
     }
 
     function openOrderModal(id, portId) {

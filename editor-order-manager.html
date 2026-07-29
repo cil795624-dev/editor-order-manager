@@ -690,7 +690,7 @@
 
       .mobile-nav {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 6px;
       }
 
@@ -787,13 +787,14 @@
         </div>
         <div>
           <h1>图编单口排单管家</h1>
-          <p>单口 / 排单 / 待办</p>
+          <p>单口 / 排单 / 待办 / 统计</p>
         </div>
       </div>
       <nav class="nav" aria-label="主导航">
         <button class="nav-btn active" data-view="ports"><span class="icon"><svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"></path><path d="M3 3h5M16 3h5M3 21h5M16 21h5"></path></svg></span>单口</button>
         <button class="nav-btn" data-view="orders"><span class="icon"><svg viewBox="0 0 24 24"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01M3 12h.01M3 18h.01"></path></svg></span>排单</button>
         <button class="nav-btn" data-view="todos"><span class="icon"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></span>待办</button>
+        <button class="nav-btn" data-view="stats"><span class="icon"><svg viewBox="0 0 24 24"><path d="M11 3v18"></path><path d="M4 14h14"></path><path d="M18 7h2v14H4V3h14z"></path></svg></span>统计</button>
       </nav>
       <div class="side-tools">
         <button class="btn small" id="backupSideBtn">备份</button>
@@ -808,13 +809,14 @@
         </div>
         <div>
           <h1>图编单口排单管家</h1>
-          <p>开卡、排单、出图扣卡</p>
+          <p>单口、排单、待办、统计</p>
         </div>
       </div>
       <nav class="mobile-nav" aria-label="移动导航">
         <button class="nav-btn active" data-view="ports">单口</button>
         <button class="nav-btn" data-view="orders">排单</button>
         <button class="nav-btn" data-view="todos">待办</button>
+        <button class="nav-btn" data-view="stats">统计</button>
       </nav>
     </div>
 
@@ -891,6 +893,17 @@
             <span id="todoCount">0 张</span>
           </div>
           <div class="record-list" id="todoList"></div>
+        </section>
+      </section>
+
+      <section class="screen" id="statsView" hidden>
+        <section class="panel">
+          <div class="panel-head">
+            <h3>统计</h3>
+            <span id="statsPortCount">0 个单口</span>
+          </div>
+          <div class="metric-grid" id="statsGrid"></div>
+          <div class="grid" id="statsDetailGrid"></div>
         </section>
       </section>
     </main>
@@ -973,21 +986,11 @@
             <label for="portGroup">单口群号</label>
             <input id="portGroup" placeholder="群号" />
           </div>
+          <input id="portProduct" type="hidden" />
+          <input id="portProductName" type="hidden" />
+          <input id="portProductType" type="hidden" value="单口" />
           <div class="field">
-            <label for="portProductName">卡项名称</label>
-            <input id="portProductName" placeholder="月卡 / 年卡 / 联名卡 / 月结口" />
-            <input id="portProduct" type="hidden" />
-          </div>
-          <div class="field">
-            <label for="portProductType">卡项类型</label>
-            <select id="portProductType">
-              <option>溶图卡</option>
-              <option>板写卡</option>
-              <option>溶写联名</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="portUnitPrice">单价</label>
+            <label for="portUnitPrice">单价（r/p）</label>
             <input id="portUnitPrice" type="number" min="0" step="0.01" placeholder="可不填" />
           </div>
           <div class="field">
@@ -1201,6 +1204,7 @@
 
     var APP_VERSION = "1.0";
     var STORAGE_KEY = "editor-order-manager-v1";
+    var DEFAULT_PORT_STOP_WEEKDAYS = ["6", "0"];
     var state = {
       products: [],
       ports: [],
@@ -1426,11 +1430,20 @@
             port.unitPrice = number(product.unitPrice);
             changed = true;
           }
-          if (!Array.isArray(port.stopWeekdays)) {
-            port.stopWeekdays = Array.isArray(product.stopWeekdays) ? product.stopWeekdays.slice() : [];
+        }
+        var portStops = normalizedPortStopWeekdays(Array.isArray(port.stopWeekdays)
+          ? port.stopWeekdays
+          : (product && Array.isArray(product.stopWeekdays) ? product.stopWeekdays : []));
+        if (!sameWeekdayList(port.stopWeekdays, portStops)) {
+          port.stopWeekdays = portStops;
+          changed = true;
+        }
+        ["productId", "productName", "productType"].forEach(function (key) {
+          if (Object.prototype.hasOwnProperty.call(port, key)) {
+            delete port[key];
             changed = true;
           }
-        }
+        });
       });
       state.orders.forEach(function (order) {
         if ((order.source || "card") === "loose") return;
@@ -1468,12 +1481,23 @@
           order.productType = product ? product.type || "" : port.productType || "";
           changed = true;
         }
-        if (!Array.isArray(order.stopWeekdays) && (product || port)) {
-          order.stopWeekdays = product && Array.isArray(product.stopWeekdays)
-            ? product.stopWeekdays.slice()
-            : (Array.isArray(port.stopWeekdays) ? port.stopWeekdays.slice() : []);
-          changed = true;
+        if (product || port || Array.isArray(order.stopWeekdays)) {
+          var orderStops = normalizedPortStopWeekdays(Array.isArray(order.stopWeekdays)
+            ? order.stopWeekdays
+            : (product && Array.isArray(product.stopWeekdays)
+              ? product.stopWeekdays
+              : (Array.isArray(port && port.stopWeekdays) ? port.stopWeekdays : [])));
+          if (!sameWeekdayList(order.stopWeekdays, orderStops)) {
+            order.stopWeekdays = orderStops;
+            changed = true;
+          }
         }
+        ["productId", "productName", "productType"].forEach(function (key) {
+          if (Object.prototype.hasOwnProperty.call(order, key)) {
+            delete order[key];
+            changed = true;
+          }
+        });
       });
       state.products.forEach(function (product) {
         ["expiryDate", "pauseStart", "pauseEnd", "extensionDays", "leadDays"].forEach(function (key) {
@@ -1511,12 +1535,12 @@
     function productForPort(port) {
       var product = productById(port && port.productId);
       return {
-        id: port ? port.productId : "",
-        name: port ? port.productName || (product ? product.name : "") || "未命名卡项" : "未命名卡项",
-        type: port ? port.productType || (product ? product.type : "") || "溶图卡" : "溶图卡",
+        id: port ? port.productId || "" : "",
+        name: port ? port.productName || (product ? product.name : "") || "单口" : "单口",
+        type: port ? port.productType || (product ? product.type : "") || "单口" : "单口",
         quota: product ? product.quota : null,
         unitPrice: hasNumber(port && port.unitPrice) ? port.unitPrice : (product ? product.unitPrice : null),
-        stopWeekdays: Array.isArray(port && port.stopWeekdays) ? port.stopWeekdays : (product && Array.isArray(product.stopWeekdays) ? product.stopWeekdays : [])
+        stopWeekdays: normalizedPortStopWeekdays(Array.isArray(port && port.stopWeekdays) ? port.stopWeekdays : (product && Array.isArray(product.stopWeekdays) ? product.stopWeekdays : []))
       };
     }
 
@@ -1530,16 +1554,16 @@
           type: order ? order.productType || portProduct.type : portProduct.type,
           quota: portProduct.quota,
           unitPrice: hasNumber(order && order.unitPrice) ? order.unitPrice : portProduct.unitPrice,
-          stopWeekdays: Array.isArray(order && order.stopWeekdays) ? order.stopWeekdays : portProduct.stopWeekdays
+          stopWeekdays: normalizedPortStopWeekdays(Array.isArray(order && order.stopWeekdays) ? order.stopWeekdays : portProduct.stopWeekdays)
         };
       }
       return {
         id: order ? order.productId : "",
-        name: order ? order.productName || (product ? product.name : "") || "未命名卡项" : "未命名卡项",
-        type: order ? order.productType || (product ? product.type : "") || "溶图卡" : "溶图卡",
+        name: order ? order.productName || (product ? product.name : "") || "单口" : "单口",
+        type: order ? order.productType || (product ? product.type : "") || "单口" : "单口",
         quota: null,
         unitPrice: hasNumber(order && order.unitPrice) ? order.unitPrice : (product ? product.unitPrice : null),
-        stopWeekdays: Array.isArray(order && order.stopWeekdays) ? order.stopWeekdays : (product && Array.isArray(product.stopWeekdays) ? product.stopWeekdays : [])
+        stopWeekdays: normalizedPortStopWeekdays(Array.isArray(order && order.stopWeekdays) ? order.stopWeekdays : (product && Array.isArray(product.stopWeekdays) ? product.stopWeekdays : []))
       };
     }
 
@@ -1629,6 +1653,21 @@
       var map = { 0: "周日", 1: "周一", 2: "周二", 3: "周三", 4: "周四", 5: "周五", 6: "周六" };
       var list = Array.isArray(days) ? days : [];
       return list.length ? list.map(function (day) { return map[day]; }).filter(Boolean).join("、") : "无";
+    }
+
+    function normalizedPortStopWeekdays(days) {
+      var allowed = ["0", "1", "2", "3", "4", "5", "6"];
+      var list = Array.isArray(days) ? days.map(String).filter(function (day) { return allowed.indexOf(day) >= 0; }) : [];
+      DEFAULT_PORT_STOP_WEEKDAYS.forEach(function (day) {
+        if (list.indexOf(day) < 0) list.push(day);
+      });
+      return list;
+    }
+
+    function sameWeekdayList(left, right) {
+      var a = Array.isArray(left) ? left.map(String).sort().join("|") : "";
+      var b = Array.isArray(right) ? right.map(String).sort().join("|") : "";
+      return a === b;
     }
 
     function isStopDay(date, product) {
@@ -1792,7 +1831,8 @@
       var map = {
         ports: ["单口", "按实际到期时间由近到远排序，结合余额和工期标记疑似危险单口。"],
         orders: ["排单", "选择内容类型和是否加急后自动计算扣卡，固定停排和请假不计入工期。"],
-        todos: ["待办", "未完成排单按应交日期排序，越紧急越靠前，同一天再按单号排。"]
+        todos: ["待办", "未完成排单按应交日期排序，越紧急越靠前，同一天再按单号排。"],
+        stats: ["统计", "看单口构成、联名老师分布，以及当前一共还欠多少 p。"]
       };
       return map[state.view] || map.ports;
     }
@@ -1805,7 +1845,7 @@
       $$(".nav-btn").forEach(function (button) {
         button.classList.toggle("active", button.dataset.view === state.view);
       });
-      ["products", "ports", "orders", "todos"].forEach(function (name) {
+      ["products", "ports", "orders", "todos", "stats"].forEach(function (name) {
         $("#" + name + "View").hidden = state.view !== name;
       });
       renderActionVisibility();
@@ -1814,6 +1854,7 @@
       renderPorts();
       renderOrders();
       renderTodos();
+      renderStats();
     }
 
     function renderActionVisibility() {
@@ -1822,6 +1863,7 @@
       $("#newOrderBtn").hidden = state.view !== "orders";
       $("#sampleBtn").hidden = state.view !== "ports";
       $("#metrics").hidden = state.view !== "ports";
+      $(".toolbar").hidden = state.view === "stats";
     }
 
     function renderMetrics() {
@@ -1840,6 +1882,80 @@
         metricMarkup("今日已做", todayDone + " 张")
       ].join("");
       $("#todoCount").textContent = pendingOrders.reduce(function (sum, order) { return sum + number(order.qty); }, 0) + " 张";
+    }
+
+    function positiveBalance(port) {
+      return hasNumber(port && port.balance) ? Math.max(0, number(port.balance)) : 0;
+    }
+
+    function portDebtP(port) {
+      return isStoredPort(port) ? 0 : positiveBalance(port);
+    }
+
+    function statsKv(items) {
+      return '<div class="kv">' + items.map(function (item) {
+        return '<div><span>' + escapeHtml(item[0]) + '</span><strong>' + escapeHtml(item[1]) + '</strong></div>';
+      }).join("") + '</div>';
+    }
+
+    function renderStats() {
+      var ports = state.ports.slice();
+      $("#statsPortCount").textContent = ports.length + " 个单口";
+      var normalPorts = ports.filter(function (port) { return (port.rushType || "normal") === "normal"; });
+      var rushPorts = ports.filter(function (port) { return port.rushType === "rush"; });
+      var jointPorts = ports.filter(isJointPort);
+      var storedPorts = ports.filter(isStoredPort);
+      var totalDebt = ports.reduce(function (sum, port) { return sum + portDebtP(port); }, 0);
+      var normalDebt = normalPorts.reduce(function (sum, port) { return sum + portDebtP(port); }, 0);
+      var rushDebt = rushPorts.reduce(function (sum, port) { return sum + portDebtP(port); }, 0);
+      var jointDebt = jointPorts.reduce(function (sum, port) { return sum + portDebtP(port); }, 0);
+      var storedBalance = storedPorts.reduce(function (sum, port) { return sum + positiveBalance(port); }, 0);
+      var jointByTeacher = jointPorts.reduce(function (map, port) {
+        var name = (port.coTeacher || "").trim() || "未填联名老师";
+        map[name] = (map[name] || 0) + 1;
+        return map;
+      }, {});
+      var jointTeacherItems = Object.keys(jointByTeacher).sort(function (a, b) {
+        return jointByTeacher[b] - jointByTeacher[a] || a.localeCompare(b, "zh-Hans-CN");
+      }).map(function (name) {
+        return [name, jointByTeacher[name] + " 个"];
+      });
+
+      $("#statsGrid").innerHTML = [
+        metricMarkup("普通单口", normalPorts.length + " 个"),
+        metricMarkup("加急单口", rushPorts.length + " 个"),
+        metricMarkup("联名单口", jointPorts.length + " 个"),
+        metricMarkup("储值单口", storedPorts.length + " 个"),
+        metricMarkup("总欠 p", points(totalDebt)),
+        metricMarkup("普通欠 p", points(normalDebt)),
+        metricMarkup("加急欠 p", points(rushDebt)),
+        metricMarkup("储值余额", money(storedBalance))
+      ].join("");
+
+      if (!ports.length) {
+        $("#statsDetailGrid").innerHTML = emptyMarkup("还没有统计内容", "录入单口后，这里会自动汇总单口构成和欠 p 情况。");
+        return;
+      }
+
+      $("#statsDetailGrid").innerHTML =
+        '<article class="card"><div class="name"><h4>单口构成</h4><p class="sub">按当前单口类别汇总。</p></div>' +
+        statsKv([
+          ["普通单口", normalPorts.length + " 个"],
+          ["加急单口", rushPorts.length + " 个"],
+          ["联名单口", jointPorts.length + " 个"],
+          ["储值单口", storedPorts.length + " 个"]
+        ]) + '</article>' +
+        '<article class="card"><div class="name"><h4>欠 p 总览</h4><p class="sub">储值单口余额是金额，所以单独列出。</p></div>' +
+        statsKv([
+          ["所有非储值单口", points(totalDebt)],
+          ["普通单口", points(normalDebt)],
+          ["加急单口", points(rushDebt)],
+          ["联名单口", points(jointDebt)],
+          ["储值余额", money(storedBalance)]
+        ]) + '</article>' +
+        '<article class="card"><div class="name"><h4>联名老师</h4><p class="sub">只统计联名单口。</p></div>' +
+        (jointTeacherItems.length ? statsKv(jointTeacherItems) : emptyMarkup("暂无联名单口", "新增联名单口并填写老师后会出现在这里。")) +
+        '</article>';
     }
 
     function metricMarkup(label, value) {
@@ -1891,10 +2007,9 @@
 
     function filteredPorts() {
       return state.ports.filter(function (port) {
-        var product = productForPort(port);
         if (state.portFilter === "urgent" && !isUrgentPort(port)) return false;
         if (state.portFilter === "danger" && !isDangerPort(port)) return false;
-        return matchesQuery([port.owner, port.qq, port.groupId, port.coTeacher, port.note, rushTypeLabel(port.rushType), product ? product.name : "", product ? product.type : ""].join(" "));
+        return matchesQuery([port.owner, port.qq, port.groupId, port.coTeacher, port.note, rushTypeLabel(port.rushType)].join(" "));
       }).sort(function (a, b) {
         var sa = portStatus(a);
         var sb = portStatus(b);
@@ -1911,7 +2026,7 @@
         button.classList.toggle("active", button.dataset.portFilter === state.portFilter);
       });
       if (!ports.length) {
-        $("#portGrid").innerHTML = emptyMarkup(state.portFilter === "all" ? "还没有单口" : "没有符合条件的单口", state.portFilter === "all" ? "录入老板 QQ、群号、卡项和余额后会出现在这里。" : "切回全部单口可以查看完整列表。");
+        $("#portGrid").innerHTML = emptyMarkup(state.portFilter === "all" ? "还没有单口" : "没有符合条件的单口", state.portFilter === "all" ? "录入老板 QQ、群号、余额和到期时间后会出现在这里。" : "切回全部单口可以查看完整列表。");
         return;
       }
       $("#portGrid").innerHTML = ports.map(function (port) {
@@ -1930,9 +2045,8 @@
         var extraLine = isJointPort(port) && port.coTeacher ? "联名老师：" + port.coTeacher : "";
       return '<article class="card">' +
           '<div class="card-top"><div class="name"><span class="pill ' + status.pill + '">' + escapeHtml(status.label) + '</span><h4>' + (risk.risky ? '<span class="risk-icon" title="疑似危险单口">❗</span>' : '') + escapeHtml(port.owner || "未命名单口") + '</h4><p class="sub">QQ ' + escapeHtml(port.qq || "未填") + ' · 群 ' + escapeHtml(port.groupId || "未填") + '</p></div>' +
-          '<span class="pill blue">' + escapeHtml(product ? product.type : "卡项已删") + '</span></div>' +
+          '<span class="pill blue">' + escapeHtml(rushTypeLabel(port.rushType)) + '</span></div>' +
           '<div class="kv">' +
-          '<div><span>卡项</span><strong>' + escapeHtml(product ? product.name : "已删除") + '</strong></div>' +
           '<div><span>余额</span><strong>' + escapeHtml(balanceTextForPort(port)) + '</strong></div>' +
           '<div><span>实际到期</span><strong>' + escapeHtml(expiry ? formatDate(dateValue(expiry)) : "未填") + '</strong></div>' +
           '<div><span>单口类别</span><strong>' + escapeHtml(rushTypeLabel(port.rushType)) + '</strong></div>' +
@@ -1955,8 +2069,7 @@
     function filteredOrders() {
       return state.orders.filter(function (order) {
         var port = portById(order.portId);
-        var product = productForOrder(order, port);
-        return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, contentRule(order.contentType || "pure").label, orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : "", product ? product.name : ""].join(" "));
+        return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, contentRule(order.contentType || "pure").label, orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : ""].join(" "));
       }).sort(function (a, b) {
         return String(b.date || "").localeCompare(String(a.date || "")) || naturalOrder(a, b);
       });
@@ -1973,7 +2086,7 @@
       var storedOrder = orderUsesStoredBalance(order);
       var mainLine = isLoose
         ? "散单QQ " + (order.customerQq || "未填")
-        : (port ? port.owner : "单口已删") + " · " + (product ? product.name : "卡项已删");
+        : (port ? port.owner + " · " + rushTypeLabel(port.rushType) : "单口已删");
       var groupLine = isLoose ? (order.groupId || "未填群号") : (order.groupId || (port ? port.groupId : "") || "未填");
       var jointText = !isLoose && (order.coTeacher || (port ? port.coTeacher : "")) ? " · 联名老师 " + (order.coTeacher || port.coTeacher) : "";
       var contentText = isLoose ? "" : (storedOrder
@@ -2007,8 +2120,7 @@
     function renderTodos() {
       var todos = state.orders.filter(function (order) { return !order.completed; }).filter(function (order) {
         var port = portById(order.portId);
-        var product = productForOrder(order, port);
-        return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, contentRule(order.contentType || "pure").label, orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : "", product ? product.name : ""].join(" "));
+        return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, contentRule(order.contentType || "pure").label, orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : ""].join(" "));
       }).sort(todoOrder);
       $("#todoList").innerHTML = todos.length ? todoSummaryMarkup(todos) + todos.map(function (order) { return orderMarkup(order, true); }).join("") : emptyMarkup("今天没有待办", "未完成排单会按应交日期排在这里。");
     }
@@ -2056,11 +2168,11 @@
     }
 
     function selectedPortStopDays() {
-      return $$("#portStopDays input:checked").map(function (input) { return input.value; });
+      return normalizedPortStopWeekdays($$("#portStopDays input:checked").map(function (input) { return input.value; }));
     }
 
     function setPortStopDays(days) {
-      var selected = Array.isArray(days) ? days.map(String) : [];
+      var selected = normalizedPortStopWeekdays(days);
       $$("#portStopDays input").forEach(function (input) {
         input.checked = selected.indexOf(input.value) >= 0;
       });
@@ -2099,52 +2211,44 @@
 
     function updatePortPreview() {
       updatePortKindUI();
-      var currentPort = portById($("#portId").value);
-      var product = {
-        name: $("#portProductName").value.trim() || (currentPort ? productForPort(currentPort).name : "未命名卡项"),
-        type: $("#portProductType").value,
-        unitPrice: optionalNumber($("#portUnitPrice").value),
-        stopWeekdays: selectedPortStopDays()
-      };
+      var stopWeekdays = selectedPortStopDays();
+      var unitPrice = optionalNumber($("#portUnitPrice").value);
       var fakePort = { expiryDate: $("#portExpiry").value, extensionDays: $("#portExtensionDays").value };
       var expiry = portEffectiveExpiry(fakePort);
       var type = $("#portRushType").value;
       var extra = type === "joint" ? "；联名老师：" + ($("#portCoTeacher").value.trim() || "未填") : (type === "stored" ? "；储值余额是金额，排单照常算p后扣钱" : "");
-      $("#portExpiryPreview").textContent = "实际到期：" + (expiry ? formatDate(dateValue(expiry)) : "未填") + "；" + product.type + "；" + rushTypeLabel(type) + extra + "；工期 " + number($("#portLeadDays").value) + " 天；固定停排：" + weekdayText(product.stopWeekdays) + "；单价 " + optionalMoney(product.unitPrice) + "。";
+      $("#portExpiryPreview").textContent = "实际到期：" + (expiry ? formatDate(dateValue(expiry)) : "未填") + "；" + rushTypeLabel(type) + extra + "；工期 " + number($("#portLeadDays").value) + " 天；固定停排：" + weekdayText(stopWeekdays) + "；单价 " + optionalMoney(unitPrice) + "。";
     }
 
     function openPortModal(id, productId) {
       var port = portById(id);
       $("#portModalTitle").textContent = port ? "编辑单口" : "新单口";
-      var product = port ? productForPort(port) : (productById(productId) || null);
       $("#portId").value = port ? port.id : "";
       $("#portOwner").value = port ? port.owner || "" : "";
       $("#portQq").value = port ? port.qq || "" : "";
       $("#portGroup").value = port ? port.groupId || "" : "";
-      $("#portProduct").value = port ? port.productId || "" : (productId || "");
-      $("#portProductName").value = product ? product.name || "" : "";
-      $("#portProductType").value = product ? product.type || "溶图卡" : "溶图卡";
-      $("#portUnitPrice").value = product && product.unitPrice != null ? product.unitPrice : "";
+      $("#portProduct").value = "";
+      $("#portProductName").value = "";
+      $("#portProductType").value = "单口";
+      $("#portUnitPrice").value = port && port.unitPrice != null ? port.unitPrice : "";
       $("#portRushType").value = port ? port.rushType || "normal" : "normal";
       $("#portCoTeacher").value = port ? port.coTeacher || "" : "";
       $("#portLeadDays").value = port && hasNumber(port.leadDays) ? port.leadDays : 7;
       $("#portExpiry").value = port ? port.expiryDate || "" : "";
-      $("#portBalance").value = port ? (port.balance != null ? port.balance : "") : (product && product.quota != null ? product.quota : "");
+      $("#portBalance").value = port ? (port.balance != null ? port.balance : "") : "";
       $("#portExtensionDays").value = port ? port.extensionDays || 0 : 0;
       $("#portNote").value = port ? port.note || "" : "";
-      setPortStopDays(product ? product.stopWeekdays : []);
+      setPortStopDays(port ? port.stopWeekdays : DEFAULT_PORT_STOP_WEEKDAYS);
       updatePortPreview();
       openModal("portModal");
     }
 
     function portOptionLabel(port) {
-      var product = productForPort(port);
-      return (port.owner || "未命名单口") + " · QQ " + (port.qq || "未填") + " · 群 " + (port.groupId || "未填") + " · " + (product ? product.name : "卡项已删") + " · " + rushTypeLabel(port.rushType) + " · 余" + balanceTextForPort(port);
+      return (port.owner || "未命名单口") + " · QQ " + (port.qq || "未填") + " · 群 " + (port.groupId || "未填") + " · " + rushTypeLabel(port.rushType) + " · 余" + balanceTextForPort(port);
     }
 
     function portSearchText(port) {
-      var product = productForPort(port);
-      return [port.owner, port.qq, port.groupId, port.coTeacher, port.note, rushTypeLabel(port.rushType), product ? product.name : "", product ? product.type : ""].join(" ").toLowerCase();
+      return [port.owner, port.qq, port.groupId, port.coTeacher, port.note, rushTypeLabel(port.rushType)].join(" ").toLowerCase();
     }
 
     function renderPortOptions(select, selectedId, query) {
@@ -2202,7 +2306,7 @@
           unitPrice: optionalNumber($("#orderLooseUnitPrice").value)
         };
         var looseDue = dueDateForOrder(fakeLoose);
-        $("#orderDuePreview").textContent = "散单：" + ($("#orderCustomerQq").value.trim() || "未填QQ") + "；" + (looseDue ? "应出图日期：" + looseDue + "；" : "未填写散单工期；") + "请假日不计入工期，完成后不会扣单口余额。";
+        $("#orderDuePreview").textContent = "散单：" + ($("#orderCustomerQq").value.trim() || "未填QQ") + "；" + (looseDue ? "应出图日期：" + looseDue + "；" : "未填写散单工期；") + "请假日和周末不计入工期，完成后不会扣单口余额。";
         return;
       }
       var port = portById($("#orderPort").value);
@@ -2287,17 +2391,11 @@
       event.preventDefault();
       var id = $("#portId").value || uid();
       var existing = state.ports.findIndex(function (item) { return item.id === id; });
-      var oldPort = existing >= 0 ? state.ports[existing] : null;
-      var productId = $("#portProduct").value || (oldPort ? oldPort.productId : "") || uid();
-      var productName = $("#portProductName").value.trim() || "未命名卡项";
       var port = {
         id: id,
         owner: $("#portOwner").value.trim(),
         qq: $("#portQq").value.trim(),
         groupId: $("#portGroup").value.trim(),
-        productId: productId,
-        productName: productName,
-        productType: $("#portProductType").value,
         unitPrice: optionalNumber($("#portUnitPrice").value),
         stopWeekdays: selectedPortStopDays(),
         rushType: $("#portRushType").value,
@@ -2376,12 +2474,9 @@
         orderNo: $("#orderNo").value.trim(),
         source: source,
         portId: port ? port.id : "",
-        productId: port ? port.productId : "",
-        productName: product ? product.name || "" : "",
-        productType: product ? product.type || "" : "",
         portRushType: port ? port.rushType || "normal" : "",
         coTeacher: port ? port.coTeacher || "" : "",
-        stopWeekdays: product && Array.isArray(product.stopWeekdays) ? product.stopWeekdays.slice() : [],
+        stopWeekdays: product && Array.isArray(product.stopWeekdays) ? normalizedPortStopWeekdays(product.stopWeekdays) : DEFAULT_PORT_STOP_WEEKDAYS.slice(),
         customerQq: source === "loose" ? $("#orderCustomerQq").value.trim() : "",
         leadDays: source === "loose" ? optionalNumber($("#orderLooseLeadDays").value) : (port && hasNumber(port.leadDays) ? number(port.leadDays) : null),
         unitPrice: source === "loose" ? optionalNumber($("#orderLooseUnitPrice").value) : (product && product.unitPrice != null ? product.unitPrice : null),
@@ -2742,18 +2837,14 @@
 
     function loadSample() {
       if ((state.ports.length || state.orders.length) && !window.confirm("会追加示例数据，继续吗？")) return;
-      var productId = uid();
       var portId = uid();
       state.ports.push({
         id: portId,
         owner: "示例老板A",
         qq: "123456789",
         groupId: "987654321",
-        productId: productId,
-        productName: "年卡",
-        productType: "溶图卡",
         unitPrice: 8,
-        stopWeekdays: ["0"],
+        stopWeekdays: DEFAULT_PORT_STOP_WEEKDAYS.slice(),
         rushType: "normal",
         leadDays: 7,
         expiryDate: dateValue(addDays(today(), 120)),
@@ -2767,10 +2858,7 @@
         orderNo: "001",
         source: "card",
         portId: portId,
-        productId: productId,
-        productName: "年卡",
-        productType: "溶图卡",
-        stopWeekdays: ["0"],
+        stopWeekdays: DEFAULT_PORT_STOP_WEEKDAYS.slice(),
         customerQq: "",
         leadDays: 7,
         unitPrice: 8,

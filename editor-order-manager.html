@@ -620,6 +620,31 @@
       gap: 10px;
     }
 
+    .order-item-list {
+      display: grid;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-soft);
+    }
+
+    .order-item-row {
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+      align-items: end;
+    }
+
+    .order-item-row strong {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
     .rule-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 120px auto;
@@ -720,7 +745,7 @@
 
       .mobile-nav {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 6px;
       }
 
@@ -795,6 +820,10 @@
         grid-template-columns: 1fr;
       }
 
+      .order-item-row {
+        grid-template-columns: 1fr;
+      }
+
       .modal {
         inset: 10px;
         width: auto;
@@ -821,7 +850,7 @@
         </div>
         <div>
           <h1>图编单口排单管家</h1>
-          <p>单口 / 排单 / 待办 / 统计</p>
+          <p>单口 / 排单 / 待办 / 黑名单</p>
         </div>
       </div>
       <nav class="nav" aria-label="主导航">
@@ -829,6 +858,7 @@
         <button class="nav-btn" data-view="orders"><span class="icon"><svg viewBox="0 0 24 24"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01M3 12h.01M3 18h.01"></path></svg></span>排单</button>
         <button class="nav-btn" data-view="todos"><span class="icon"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></span>待办</button>
         <button class="nav-btn" data-view="stats"><span class="icon"><svg viewBox="0 0 24 24"><path d="M11 3v18"></path><path d="M4 14h14"></path><path d="M18 7h2v14H4V3h14z"></path></svg></span>统计</button>
+        <button class="nav-btn" data-view="blacklist"><span class="icon"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v6c0 5-3.5 8-8 8s-8-3-8-8V7z"></path><path d="M9 9l6 6M15 9l-6 6"></path></svg></span>黑名单</button>
       </nav>
       <div class="side-tools">
         <button class="btn small" id="backupSideBtn">备份</button>
@@ -843,7 +873,7 @@
         </div>
         <div>
           <h1>图编单口排单管家</h1>
-          <p>单口、排单、待办、统计</p>
+          <p>单口、排单、待办、黑名单</p>
         </div>
       </div>
       <nav class="mobile-nav" aria-label="移动导航">
@@ -851,6 +881,7 @@
         <button class="nav-btn" data-view="orders">排单</button>
         <button class="nav-btn" data-view="todos">待办</button>
         <button class="nav-btn" data-view="stats">统计</button>
+        <button class="nav-btn" data-view="blacklist">黑名单</button>
       </nav>
     </div>
 
@@ -868,6 +899,7 @@
           <button class="btn" id="rulesBtn">扣卡规则</button>
           <button class="btn primary" id="newPortBtn">新单口</button>
           <button class="btn primary" id="newOrderBtn">新排单</button>
+          <button class="btn primary" id="newBlacklistBtn">新黑名单</button>
         </div>
       </section>
 
@@ -947,6 +979,16 @@
           </div>
           <div class="metric-grid" id="statsGrid"></div>
           <div class="grid" id="statsDetailGrid"></div>
+        </section>
+      </section>
+
+      <section class="screen" id="blacklistView" hidden>
+        <section class="panel">
+          <div class="panel-head">
+            <h3>黑名单</h3>
+            <span id="blacklistCount">0 个</span>
+          </div>
+          <div class="grid" id="blacklistGrid"></div>
         </section>
       </section>
     </main>
@@ -1147,6 +1189,11 @@
             <label for="orderQty" id="orderQtyLabel">下单张数</label>
             <input id="orderQty" type="number" min="1" step="1" required value="1" />
           </div>
+          <div class="field full" id="orderItemField" hidden>
+            <label>分张设置</label>
+            <div class="order-item-list" id="orderItemRows"></div>
+            <div class="hint">下多张时，每一张单独选择内容类型和加急状态；总扣卡会自动相加。</div>
+          </div>
           <div class="field" id="orderLooseLeadField" hidden>
             <label for="orderLooseLeadDays">散单工期</label>
             <input id="orderLooseLeadDays" type="number" min="0" step="1" placeholder="可不填" />
@@ -1231,6 +1278,47 @@
     </form>
   </section>
 
+  <section class="modal" id="blacklistModal" aria-hidden="true">
+    <form id="blacklistForm">
+      <div class="modal-head">
+        <h3 id="blacklistModalTitle">新黑名单</h3>
+        <button type="button" class="btn icon-only" data-close-modal aria-label="关闭"><span class="icon"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="blacklistRowId" />
+        <div class="form-grid">
+          <div class="field">
+            <label for="blacklistPersonId">ID</label>
+            <input id="blacklistPersonId" placeholder="微博ID / 皮下ID / 常用称呼" />
+          </div>
+          <div class="field">
+            <label for="blacklistQq">QQ</label>
+            <input id="blacklistQq" placeholder="用于和老板QQ自动匹配" />
+          </div>
+          <div class="field">
+            <label for="blacklistLevel">神经病程度</label>
+            <select id="blacklistLevel">
+              <option value="1">1星</option>
+              <option value="2">2星</option>
+              <option value="3">3星</option>
+              <option value="4">4星</option>
+              <option value="5">5星</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label for="blacklistReason">避雷原因</label>
+            <textarea id="blacklistReason" placeholder="写清楚为什么避雷，方便以后快速判断"></textarea>
+          </div>
+        </div>
+        <div class="hint">保存后，如果单口老板 QQ 与黑名单 QQ 重复，单口页面和排单预览都会提示。</div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" data-close-modal>取消</button>
+        <button type="submit" class="btn primary">保存</button>
+      </div>
+    </form>
+  </section>
+
   <input class="file-input" id="importFile" type="file" accept=".json,application/json,text/plain,application/octet-stream" aria-label="选择备份文件" />
   <div class="toast" id="toast"></div>
 
@@ -1283,6 +1371,7 @@
       ports: [],
       orders: [],
       leaves: [],
+      blacklist: [],
       deductRules: DEFAULT_DEDUCT_RULES.map(function (rule) { return { id: rule.id, label: rule.label, points: rule.points }; }),
       view: "ports",
       query: "",
@@ -1292,7 +1381,8 @@
       todoSort: "due",
       pendingDeleteProductId: "",
       pendingDeleteOrderId: "",
-      pendingDeletePortId: ""
+      pendingDeletePortId: "",
+      pendingDeleteBlacklistId: ""
     };
     var memoryStorage = {};
     var localStorageOK = false;
@@ -1486,6 +1576,7 @@
         state.ports = Array.isArray(data.ports) ? data.ports : [];
         state.orders = Array.isArray(data.orders) ? data.orders : [];
         state.leaves = Array.isArray(data.leaves) ? data.leaves : [];
+        state.blacklist = Array.isArray(data.blacklist) ? data.blacklist : [];
         state.deductRules = normalizeDeductRules(data.deductRules);
         if (migrateLegacyPortExpiry()) save();
       } catch (error) {
@@ -1502,6 +1593,7 @@
         ports: state.ports,
         orders: state.orders,
         leaves: state.leaves,
+        blacklist: state.blacklist,
         deductRules: normalizeDeductRules(state.deductRules),
         updatedAt: new Date().toISOString()
       }));
@@ -1739,6 +1831,12 @@
     }
 
     function isUrgentOrder(order) {
+      var items = orderItemsForCalc(order);
+      if (items.length) {
+        return items.some(function (item) {
+          return item.rushMode === "rush" || item.rushMode === "rushCard";
+        });
+      }
       var mode = order && order.rushMode || "normal";
       return mode === "rush" || mode === "rushCard";
     }
@@ -1748,9 +1846,88 @@
       return number(qty) * contentRule(contentType).points * multiplier;
     }
 
+    function calcItemDeduct(contentType, rushMode) {
+      return calcDeductQty(1, contentType, rushMode);
+    }
+
+    function normalizeQq(value) {
+      return String(value || "").replace(/\D/g, "");
+    }
+
+    function starText(level) {
+      var count = Math.max(1, Math.min(5, Math.round(number(level) || 1)));
+      return "★★★★★".slice(0, count) + "☆☆☆☆☆".slice(0, 5 - count);
+    }
+
+    function blacklistMatchesQq(qq) {
+      var target = normalizeQq(qq);
+      if (!target) return [];
+      return state.blacklist.filter(function (item) {
+        return normalizeQq(item.qq) === target;
+      });
+    }
+
+    function blacklistWarningText(qq) {
+      var matches = blacklistMatchesQq(qq);
+      if (!matches.length) return "";
+      return matches.map(function (item) {
+        return (item.personId || "未填ID") + " " + starText(item.level) + (item.reason ? "：" + item.reason : "");
+      }).join("；");
+    }
+
+    function normalizeOrderItems(items, qty, fallbackContentType, fallbackRushMode) {
+      var count = Math.max(1, Math.floor(number(qty) || 1));
+      var source = Array.isArray(items) ? items : [];
+      var result = [];
+      for (var i = 0; i < count; i += 1) {
+        var item = source[i] || {};
+        var contentType = item.contentType || fallbackContentType || "pure";
+        var rushMode = item.rushMode || fallbackRushMode || "normal";
+        var rule = contentRule(contentType);
+        result.push({
+          contentType: rule.id,
+          contentLabel: rule.label,
+          contentPoints: rule.points,
+          rushMode: rushMode,
+          deductQty: calcItemDeduct(rule.id, rushMode)
+        });
+      }
+      return result;
+    }
+
+    function orderItemsForCalc(order) {
+      if (order && Array.isArray(order.items) && order.items.length) {
+        return order.items.map(function (item) {
+          var rule = contentRule(item.contentType || order.contentType || "pure");
+          var points = hasNumber(item.contentPoints) ? number(item.contentPoints) : rule.points;
+          var rushMode = item.rushMode || order.rushMode || "normal";
+          return {
+            contentType: item.contentType || rule.id,
+            contentLabel: item.contentLabel || rule.label,
+            contentPoints: points,
+            rushMode: rushMode,
+            deductQty: hasNumber(item.deductQty) ? number(item.deductQty) : points * (rushMode === "rush" ? 2 : 1)
+          };
+        });
+      }
+      return [];
+    }
+
     function orderDeductQty(order) {
+      var items = orderItemsForCalc(order);
+      if (items.length) {
+        return items.reduce(function (sum, item) { return sum + number(item.deductQty); }, 0);
+      }
       if (hasNumber(order.deductQty)) return number(order.deductQty);
       return calcDeductQty(order.qty, order.contentType || "pure", order.rushMode || "normal");
+    }
+
+    function orderItemsText(order) {
+      var items = orderItemsForCalc(order);
+      if (!items.length) return "";
+      return items.map(function (item, index) {
+        return "第" + (index + 1) + "张 " + item.contentLabel + " · " + orderRushLabel(item.rushMode) + " · " + item.deductQty + "p";
+      }).join("；");
     }
 
     function orderUsesStoredBalance(order) {
@@ -1996,7 +2173,8 @@
         ports: ["单口", "按实际到期时间由近到远排序，结合余额和工期标记疑似危险单口。"],
         orders: ["排单", "选择内容类型和排单状态后自动计算扣卡：临时加急x2，加急卡正常扣卡。"],
         todos: ["待办", "可按交稿日期混排，也可按单号分成加急待办和普通待办。"],
-        stats: ["统计", "看单口构成、联名老师分布，以及当前一共还欠多少 p。"]
+        stats: ["统计", "看单口构成、联名老师分布，以及当前一共还欠多少 p。"],
+        blacklist: ["黑名单", "记录需要避雷的ID和QQ；如果老板QQ撞上，会在单口和排单时提醒。"]
       };
       return map[state.view] || map.ports;
     }
@@ -2009,7 +2187,7 @@
       $$(".nav-btn").forEach(function (button) {
         button.classList.toggle("active", button.dataset.view === state.view);
       });
-      ["products", "ports", "orders", "todos", "stats"].forEach(function (name) {
+      ["products", "ports", "orders", "todos", "stats", "blacklist"].forEach(function (name) {
         $("#" + name + "View").hidden = state.view !== name;
       });
       renderActionVisibility();
@@ -2019,6 +2197,7 @@
       renderOrders();
       renderTodos();
       renderStats();
+      renderBlacklist();
     }
 
     function renderActionVisibility() {
@@ -2026,6 +2205,7 @@
       $("#leaveBtn").hidden = state.view !== "ports";
       $("#newOrderBtn").hidden = state.view !== "orders";
       $("#rulesBtn").hidden = state.view !== "orders";
+      $("#newBlacklistBtn").hidden = state.view !== "blacklist";
       $("#sampleBtn").hidden = state.view !== "ports";
       $("#metrics").hidden = state.view !== "ports";
       $(".toolbar").hidden = state.view === "stats";
@@ -2155,6 +2335,37 @@
 
     function emptyMarkup(title, body) {
       return '<div class="empty"><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(body) + '</span></div>';
+    }
+
+    function filteredBlacklist() {
+      return state.blacklist.filter(function (item) {
+        return matchesQuery([item.personId, item.qq, item.reason, starText(item.level)].join(" "));
+      }).sort(function (a, b) {
+        return number(b.level) - number(a.level) || String(a.personId || "").localeCompare(String(b.personId || ""), "zh-Hans-CN");
+      });
+    }
+
+    function renderBlacklist() {
+      var list = filteredBlacklist();
+      $("#blacklistCount").textContent = list.length + " 个";
+      if (!list.length) {
+        $("#blacklistGrid").innerHTML = emptyMarkup("还没有黑名单", "记录ID、QQ和避雷原因后，如果老板QQ撞上会自动提醒。");
+        return;
+      }
+      $("#blacklistGrid").innerHTML = list.map(function (item) {
+        var deleteArmed = state.pendingDeleteBlacklistId === item.id;
+        var relatedPorts = state.ports.filter(function (port) { return normalizeQq(port.qq) && normalizeQq(port.qq) === normalizeQq(item.qq); });
+        return '<article class="card">' +
+          '<div class="card-top"><div class="name"><span class="pill rose">' + escapeHtml(starText(item.level)) + '</span><h4>' + escapeHtml(item.personId || "未填ID") + '</h4><p class="sub">QQ ' + escapeHtml(item.qq || "未填") + '</p></div>' +
+          '<span class="pill amber">' + number(item.level || 1) + '星</span></div>' +
+          '<p class="sub">' + escapeHtml(item.reason || "未填写避雷原因") + '</p>' +
+          (relatedPorts.length ? '<p class="sub"><strong>已撞老板QQ：</strong>' + escapeHtml(relatedPorts.map(function (port) { return port.owner || "未命名单口"; }).join("、")) + '</p>' : '') +
+          '<div class="card-actions">' +
+          '<button class="btn small" data-edit-blacklist="' + escapeHtml(item.id) + '">编辑</button>' +
+          '<button type="button" class="btn small danger" data-delete-blacklist="' + escapeHtml(item.id) + '">' + (deleteArmed ? "再点确认删除" : "删除") + '</button>' +
+          '</div>' +
+          '</article>';
+      }).join("");
     }
 
     function filteredProducts() {
@@ -2289,6 +2500,7 @@
         var balanceWorthLabel = isStoredPort(port) ? "储值剩余 " : "折算剩余 ";
         var deleteArmed = state.pendingDeletePortId === port.id;
         var extraLine = isJointPort(port) && port.coTeacher ? "联名老师：" + port.coTeacher : "";
+        var blackWarning = blacklistWarningText(port.qq);
       return '<article class="card">' +
           '<div class="card-top"><div class="name"><span class="pill ' + status.pill + '">' + escapeHtml(status.label) + '</span><h4>' + (risk.risky ? '<span class="risk-icon" title="疑似危险单口">❗</span>' : '') + escapeHtml(port.owner || "未命名单口") + '</h4><p class="sub">QQ ' + escapeHtml(port.qq || "未填") + ' · 群 ' + escapeHtml(port.groupId || "未填") + '</p></div>' +
           '<span class="pill blue">' + escapeHtml(rushTypeLabel(port.rushType)) + '</span></div>' +
@@ -2301,6 +2513,7 @@
           '</div>' +
           '<p class="sub">单口延期 ' + number(port.extensionDays) + ' 天 · ' + balanceWorthLabel + balanceWorth + '</p>' +
           (extraLine ? '<p class="sub">' + escapeHtml(extraLine) + '</p>' : '') +
+          (blackWarning ? '<p class="sub"><strong>黑名单提醒：</strong>' + escapeHtml(blackWarning) + '</p>' : '') +
           (risk.risky ? '<p class="sub"><strong>❗ ' + escapeHtml(risk.text) + '</strong></p>' : '') +
           '<div class="card-actions">' +
           '<button class="btn small primary" data-order-port="' + port.id + '">排单</button>' +
@@ -2315,7 +2528,7 @@
     function filteredOrders() {
       return state.orders.filter(function (order) {
         var port = portById(order.portId);
-        return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, orderRule(order).label, orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : ""].join(" "));
+        return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, orderRule(order).label, orderItemsText(order), orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : ""].join(" "));
       }).sort(function (a, b) {
         return String(b.date || "").localeCompare(String(a.date || "")) || naturalOrder(a, b);
       });
@@ -2337,11 +2550,12 @@
       var subLine = isLoose ? mainLine : mainLine + " · 群 " + groupLine;
       var jointText = !isLoose && (order.coTeacher || (port ? port.coTeacher : "")) ? " · 联名老师 " + (order.coTeacher || port.coTeacher) : "";
       var rule = orderRule(order);
-      var contentText = isLoose
+      var itemText = orderItemsText(order);
+      var contentText = itemText || (isLoose
         ? rule.label + " · " + orderRushLabel(order.rushMode || "normal") + " · 实扣 " + orderDeductQty(order) + "p"
         : (storedOrder
         ? "储值散单口 · " + rule.label + " · " + orderRushLabel(order.rushMode || "normal") + " · 实扣 " + orderDeductQty(order) + "p · 扣储值 " + balanceDeductionText(order)
-        : rule.label + " · " + orderRushLabel(order.rushMode || "normal") + " · 实扣 " + orderDeductQty(order) + "p") + jointText;
+        : rule.label + " · " + orderRushLabel(order.rushMode || "normal") + " · 实扣 " + orderDeductQty(order) + "p") + jointText);
       var deleteArmed = state.pendingDeleteOrderId === order.id;
       return '<article class="' + (todoMode ? "todo-item" : "record") + '">' +
         '<div class="row-between"><div class="name"><span class="pill ' + (isLoose ? duePill : duePill) + '">' + escapeHtml(isLoose ? ("散单" + (due ? " · 应交 " + due : "")) : dueText) + '</span><strong>单号 ' + escapeHtml(order.orderNo || "未填") + '</strong><p class="sub">' + escapeHtml(subLine) + '</p></div>' +
@@ -2370,7 +2584,7 @@
     function renderTodos() {
       var todos = state.orders.filter(function (order) { return !order.completed; }).filter(function (order) {
         var port = portById(order.portId);
-        return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, orderRule(order).label, orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : ""].join(" "));
+        return matchesQuery([order.orderNo, order.groupId, order.customerQq, order.coTeacher, order.note, orderRule(order).label, orderItemsText(order), orderRushLabel(order.rushMode || "normal"), port ? port.owner : "", port ? port.qq : "", port ? port.groupId : "", port ? port.coTeacher : ""].join(" "));
       }).sort(currentTodoSorter());
       $("#todoList").innerHTML = todoSortMarkup() + (todos.length ? todoSummaryMarkup(todos) + todoListMarkup(todos) : emptyMarkup("今天没有待办", "未完成排单会按应交日期排在这里。"));
     }
@@ -2490,7 +2704,8 @@
       var expiry = portEffectiveExpiry(fakePort);
       var type = $("#portRushType").value;
       var extra = type === "joint" ? "；联名老师：" + ($("#portCoTeacher").value.trim() || "未填") : (type === "stored" ? "；储值余额是金额，排单照常算p后扣钱" : "");
-      $("#portExpiryPreview").textContent = "实际到期：" + (expiry ? formatDate(dateValue(expiry)) : "未填") + "；" + rushTypeLabel(type) + extra + "；工期 " + number($("#portLeadDays").value) + " 天；固定停排：" + weekdayText(stopWeekdays) + "；单价 " + optionalMoney(unitPrice) + "。";
+      var warning = blacklistWarningText($("#portQq").value);
+      $("#portExpiryPreview").textContent = "实际到期：" + (expiry ? formatDate(dateValue(expiry)) : "未填") + "；" + rushTypeLabel(type) + extra + "；工期 " + number($("#portLeadDays").value) + " 天；固定停排：" + weekdayText(stopWeekdays) + "；单价 " + optionalMoney(unitPrice) + (warning ? "。黑名单提醒：" + warning : "。");
     }
 
     function openPortModal(id, productId) {
@@ -2555,6 +2770,76 @@
       }
       $("#orderContentType").innerHTML = options.join("");
       $("#orderContentType").value = selected;
+    }
+
+    function contentRuleOptionsHtml(selectedId) {
+      state.deductRules = normalizeDeductRules(state.deductRules);
+      return state.deductRules.map(function (rule) {
+        return '<option value="' + escapeHtml(rule.id) + '"' + (rule.id === selectedId ? " selected" : "") + '>' + escapeHtml(rule.label + "（" + rule.points + "p）") + '</option>';
+      }).join("");
+    }
+
+    function rushModeOptionsHtml(selectedMode) {
+      var options = [
+        ["normal", "非加急"],
+        ["rush", "加急（扣卡x2）"],
+        ["rushCard", "加急卡"]
+      ];
+      return options.map(function (item) {
+        return '<option value="' + item[0] + '"' + (item[0] === selectedMode ? " selected" : "") + '>' + item[1] + '</option>';
+      }).join("");
+    }
+
+    function currentOrderQty() {
+      return Math.max(1, Math.floor(number($("#orderQty").value) || 1));
+    }
+
+    function collectOrderItemRows() {
+      return $$("#orderItemRows [data-order-item-row]").map(function (row) {
+        return {
+          contentType: row.querySelector("[data-order-item-content]").value,
+          rushMode: row.querySelector("[data-order-item-rush]").value
+        };
+      });
+    }
+
+    function orderItemRowMarkup(index, item) {
+      var contentType = item && item.contentType || $("#orderContentType").value || "pure";
+      var rushMode = item && item.rushMode || $("#orderRushMode").value || "normal";
+      return '<div class="order-item-row" data-order-item-row>' +
+        '<strong>第' + (index + 1) + '张</strong>' +
+        '<div class="field"><label>内容类型</label><select data-order-item-content>' + contentRuleOptionsHtml(contentType) + '</select></div>' +
+        '<div class="field"><label>本次排单</label><select data-order-item-rush>' + rushModeOptionsHtml(rushMode) + '</select></div>' +
+        '</div>';
+    }
+
+    function syncOrderItemRows(seedItems) {
+      var qty = currentOrderQty();
+      var useSplit = qty > 1;
+      $("#orderContentField").hidden = useSplit;
+      $("#orderRushField").hidden = useSplit;
+      $("#orderItemField").hidden = !useSplit;
+      if (!useSplit) {
+        $("#orderItemRows").innerHTML = "";
+        return;
+      }
+      var existing = Array.isArray(seedItems) ? seedItems : collectOrderItemRows();
+      var normalized = normalizeOrderItems(existing, qty, $("#orderContentType").value, $("#orderRushMode").value);
+      $("#orderItemRows").innerHTML = normalized.map(function (item, index) {
+        return orderItemRowMarkup(index, item);
+      }).join("");
+    }
+
+    function currentOrderItems() {
+      var qty = currentOrderQty();
+      if (qty > 1) {
+        return normalizeOrderItems(collectOrderItemRows(), qty, $("#orderContentType").value, $("#orderRushMode").value);
+      }
+      return normalizeOrderItems([], 1, $("#orderContentType").value, $("#orderRushMode").value);
+    }
+
+    function currentOrderDeductQty() {
+      return currentOrderItems().reduce(function (sum, item) { return sum + number(item.deductQty); }, 0);
     }
 
     function ruleRowMarkup(rule) {
@@ -2622,10 +2907,12 @@
       var isLoose = $("#orderSource").value === "loose";
       var port = isLoose ? null : portById($("#orderPort").value);
       var isStored = !isLoose && isStoredPort(port);
+      var useSplit = currentOrderQty() > 1;
       $("#orderPortSearchField").hidden = isLoose;
       $("#orderPortField").hidden = isLoose;
-      $("#orderContentField").hidden = false;
-      $("#orderRushField").hidden = false;
+      $("#orderContentField").hidden = useSplit;
+      $("#orderRushField").hidden = useSplit;
+      $("#orderItemField").hidden = !useSplit;
       $("#orderCustomerQqField").hidden = !isLoose;
       $("#orderLooseLeadField").hidden = !isLoose;
       $("#orderLoosePriceField").hidden = !isLoose;
@@ -2647,11 +2934,18 @@
 
     function updateOrderPreview() {
       updateOrderMode();
+      syncOrderItemRows();
       var isLoose = $("#orderSource").value === "loose";
+      var details = currentOrderItems();
+      var firstDetail = details[0] || { contentType: $("#orderContentType").value, rushMode: $("#orderRushMode").value };
+      var detailText = details.length > 1 ? "；分张：" + details.map(function (item, index) {
+        return "第" + (index + 1) + "张" + item.contentLabel + "/" + orderRushLabel(item.rushMode) + "/" + item.deductQty + "p";
+      }).join("，") : "";
+      var totalDeductQty = currentOrderDeductQty();
       if (isLoose) {
-        var looseContent = contentRule($("#orderContentType").value);
-        var looseRushMode = $("#orderRushMode").value;
-        var looseDeductQty = calcDeductQty($("#orderQty").value, $("#orderContentType").value, looseRushMode);
+        var looseContent = contentRule(firstDetail.contentType);
+        var looseRushMode = firstDetail.rushMode;
+        var looseDeductQty = totalDeductQty;
         var looseUnitPrice = optionalNumber($("#orderLooseUnitPrice").value);
         var fakeLoose = {
           source: "loose",
@@ -2659,21 +2953,21 @@
           qty: $("#orderQty").value,
           leadDays: optionalNumber($("#orderLooseLeadDays").value),
           unitPrice: looseUnitPrice,
-          contentType: $("#orderContentType").value,
+          contentType: firstDetail.contentType,
           rushMode: looseRushMode,
           deductQty: looseDeductQty
         };
         var looseDue = dueDateForOrder(fakeLoose);
         var looseAmount = looseUnitPrice === null ? "未填单价" : money(looseDeductQty * looseUnitPrice);
-        $("#orderDuePreview").textContent = "散单：" + ($("#orderCustomerQq").value.trim() || "未填QQ") + "；" + (looseDue ? "应出图日期：" + looseDue + "；" : "未填写散单工期；") + looseContent.label + "每张折 " + looseContent.points + "p；" + orderRushLabel(looseRushMode) + "；本次实扣 " + looseDeductQty + "p；金额 " + looseAmount + "。";
+        $("#orderDuePreview").textContent = "散单：" + ($("#orderCustomerQq").value.trim() || "未填QQ") + "；" + (looseDue ? "应出图日期：" + looseDue + "；" : "未填写散单工期；") + (details.length > 1 ? "分张计算" : looseContent.label + "每张折 " + looseContent.points + "p；" + orderRushLabel(looseRushMode)) + "；本次实扣 " + looseDeductQty + "p；金额 " + looseAmount + detailText + "。";
         return;
       }
       var port = portById($("#orderPort").value);
       if (port && !$("#orderGroup").value) $("#orderGroup").value = port.groupId || "";
       var isStored = isStoredPort(port);
-      var content = contentRule($("#orderContentType").value);
-      var rushMode = $("#orderRushMode").value;
-      var deductQty = calcDeductQty($("#orderQty").value, $("#orderContentType").value, rushMode);
+      var content = contentRule(firstDetail.contentType);
+      var rushMode = firstDetail.rushMode;
+      var deductQty = totalDeductQty;
       var fake = {
         source: "card",
         portId: $("#orderPort").value,
@@ -2681,7 +2975,7 @@
         date: $("#orderDate").value,
         qty: $("#orderQty").value,
         leadDays: port ? port.leadDays : null,
-        contentType: $("#orderContentType").value,
+        contentType: firstDetail.contentType,
         rushMode: rushMode,
         deductQty: deductQty,
         portRushType: port ? port.rushType : ""
@@ -2689,9 +2983,10 @@
       var product = port ? productForPort(port) : null;
       var due = dueDateForOrder(fake);
       var storedAmount = isStored ? balanceDeduction(fake) : null;
+      var blackWarning = port ? blacklistWarningText(port.qq) : "";
       $("#orderDuePreview").textContent = product && port ? (isStored
-        ? "应出图日期：" + (due || "未算出") + "；单口工期 " + number(port.leadDays) + " 天；请假日不计入工期，固定停排日仍计入工期；" + content.label + "每张折 " + content.points + "p；" + orderRushLabel(rushMode) + "；本次实扣 " + deductQty + "p，扣储值 " + (storedAmount === null ? "未填单价" : money(storedAmount)) + "。"
-        : "应出图日期：" + (due || "未算出") + "；单口工期 " + number(port.leadDays) + " 天；请假日不计入工期，固定停排日仍计入工期；" + content.label + "每张扣 " + content.points + "p；" + orderRushLabel(rushMode) + "；本次实扣 " + deductQty + "p。") : "请先选择单口。";
+        ? "应出图日期：" + (due || "未算出") + "；单口工期 " + number(port.leadDays) + " 天；请假日不计入工期，固定停排日仍计入工期；" + (details.length > 1 ? "分张计算" : content.label + "每张折 " + content.points + "p；" + orderRushLabel(rushMode)) + "；本次实扣 " + deductQty + "p，扣储值 " + (storedAmount === null ? "未填单价" : money(storedAmount)) + detailText + (blackWarning ? "；黑名单提醒：" + blackWarning : "") + "。"
+        : "应出图日期：" + (due || "未算出") + "；单口工期 " + number(port.leadDays) + " 天；请假日不计入工期，固定停排日仍计入工期；" + (details.length > 1 ? "分张计算" : content.label + "每张扣 " + content.points + "p；" + orderRushLabel(rushMode)) + "；本次实扣 " + deductQty + "p" + detailText + (blackWarning ? "；黑名单提醒：" + blackWarning : "") + "。") : "请先选择单口。";
     }
 
     function openOrderModal(id, portId) {
@@ -2714,6 +3009,7 @@
       $("#orderLooseUnitPrice").value = order && order.unitPrice != null ? order.unitPrice : "";
       $("#orderCompleted").checked = !!(order && order.completed);
       $("#orderNote").value = order ? order.note || "" : "";
+      syncOrderItemRows(order ? orderItemsForCalc(order) : []);
       updateOrderPreview();
       openModal("orderModal");
     }
@@ -2771,7 +3067,8 @@
       save();
       closeModals();
       render();
-      toast(existing >= 0 ? "单口已更新。" : "单口已新增。");
+      var blackWarning = blacklistWarningText(port.qq);
+      toast(blackWarning ? "单口已保存，但老板QQ撞黑名单：" + blackWarning : (existing >= 0 ? "单口已更新。" : "单口已新增。"));
     }
 
     function restoreCompletedDeduction(order) {
@@ -2824,11 +3121,13 @@
         return;
       }
       var product = port ? productForPort(port) : null;
-      var contentType = $("#orderContentType").value;
-      var rushMode = $("#orderRushMode").value;
+      var itemDetails = currentOrderItems();
+      var firstItem = itemDetails[0] || { contentType: $("#orderContentType").value, rushMode: $("#orderRushMode").value };
+      var contentType = firstItem.contentType;
+      var rushMode = firstItem.rushMode;
       var rule = contentRule(contentType);
       var qty = number($("#orderQty").value);
-      var deductQty = calcDeductQty(qty, contentType, rushMode);
+      var deductQty = itemDetails.reduce(function (sum, item) { return sum + number(item.deductQty); }, 0);
       var next = {
         id: id,
         orderNo: $("#orderNo").value.trim(),
@@ -2848,6 +3147,7 @@
         contentPoints: rule.points,
         rushMode: rushMode,
         deductQty: deductQty,
+        items: qty > 1 ? itemDetails : [],
         completed: $("#orderCompleted").checked,
         completedAt: $("#orderCompleted").checked ? (oldOrder && oldOrder.completedAt ? oldOrder.completedAt : dateValue()) : "",
         note: $("#orderNote").value.trim(),
@@ -2978,6 +3278,72 @@
       toast(order.completed && (order.source || "card") !== "loose" ? "排单已删除，扣卡已返还。" : "排单已删除。");
     }
 
+    function blacklistById(id) {
+      return state.blacklist.find(function (item) { return item.id === id; }) || null;
+    }
+
+    function openBlacklistModal(id) {
+      var item = blacklistById(id);
+      $("#blacklistModalTitle").textContent = item ? "编辑黑名单" : "新黑名单";
+      $("#blacklistRowId").value = item ? item.id : "";
+      $("#blacklistPersonId").value = item ? item.personId || "" : "";
+      $("#blacklistQq").value = item ? item.qq || "" : "";
+      $("#blacklistReason").value = item ? item.reason || "" : "";
+      $("#blacklistLevel").value = String(item ? item.level || 1 : 1);
+      openModal("blacklistModal");
+    }
+
+    function upsertBlacklist(event) {
+      event.preventDefault();
+      var id = $("#blacklistRowId").value || uid();
+      var existing = state.blacklist.findIndex(function (item) { return item.id === id; });
+      var next = {
+        id: id,
+        personId: $("#blacklistPersonId").value.trim(),
+        qq: $("#blacklistQq").value.trim(),
+        reason: $("#blacklistReason").value.trim(),
+        level: Math.max(1, Math.min(5, number($("#blacklistLevel").value) || 1)),
+        createdAt: existing >= 0 ? state.blacklist[existing].createdAt : new Date().toISOString()
+      };
+      if (!next.personId && !next.qq) {
+        toast("黑名单至少要填写 ID 或 QQ。");
+        return;
+      }
+      if (existing >= 0) state.blacklist[existing] = next;
+      else state.blacklist.push(next);
+      save();
+      closeModals();
+      render();
+      var matchedPorts = blacklistMatchesQq(next.qq).length && normalizeQq(next.qq)
+        ? state.ports.filter(function (port) { return normalizeQq(port.qq) === normalizeQq(next.qq); })
+        : [];
+      toast(matchedPorts.length ? "黑名单已保存，并撞到 " + matchedPorts.length + " 个老板QQ。" : (existing >= 0 ? "黑名单已更新。" : "黑名单已新增。"));
+    }
+
+    function deleteBlacklist(id) {
+      var item = blacklistById(id);
+      if (!item) {
+        state.pendingDeleteBlacklistId = "";
+        renderBlacklist();
+        toast("这条黑名单已经不存在。");
+        return;
+      }
+      if (state.pendingDeleteBlacklistId !== id) {
+        state.pendingDeleteProductId = "";
+        state.pendingDeletePortId = "";
+        state.pendingDeleteOrderId = "";
+        state.pendingDeleteBlacklistId = id;
+        renderBlacklist();
+        toast("再点一次红色按钮确认删除「" + (item.personId || item.qq || "这条黑名单") + "」。");
+        return;
+      }
+      state.pendingDeleteBlacklistId = "";
+      state.blacklist = state.blacklist.filter(function (entry) { return entry.id !== id; });
+      save();
+      render();
+      toast("黑名单已删除。");
+    }
+
     function toggleOrder(id) {
       var order = state.orders.find(function (item) { return item.id === id; });
       if (!order) return;
@@ -3062,6 +3428,7 @@
         ports: state.ports,
         orders: state.orders,
         leaves: state.leaves,
+        blacklist: state.blacklist,
         deductRules: normalizeDeductRules(state.deductRules)
       }, null, 2);
     }
@@ -3163,6 +3530,7 @@
         state.ports = Array.isArray(data.ports) ? data.ports : [];
         state.orders = Array.isArray(data.orders) ? data.orders : [];
         state.leaves = Array.isArray(data.leaves) ? data.leaves : [];
+        state.blacklist = Array.isArray(data.blacklist) ? data.blacklist : [];
         state.deductRules = normalizeDeductRules(data.deductRules);
         migrateLegacyPortExpiry();
         save();
@@ -3257,6 +3625,7 @@
       });
       $("#newPortBtn").addEventListener("click", function () { openPortModal(); });
       $("#newOrderBtn").addEventListener("click", function () { openOrderModal(); });
+      $("#newBlacklistBtn").addEventListener("click", function () { openBlacklistModal(); });
       $("#leaveBtn").addEventListener("click", openLeaveModal);
       $("#rulesBtn").addEventListener("click", openDeductRuleModal);
       $("#sampleBtn").addEventListener("click", loadSample);
@@ -3273,6 +3642,7 @@
       $("#orderForm").addEventListener("submit", upsertOrder);
       $("#leaveForm").addEventListener("submit", submitLeave);
       $("#deductRuleForm").addEventListener("submit", saveDeductRules);
+      $("#blacklistForm").addEventListener("submit", upsertBlacklist);
       $("#addDeductRuleBtn").addEventListener("click", addDeductRuleDraft);
       $("#deductRuleList").addEventListener("click", function (event) {
         var button = closestFromEvent(event, "[data-delete-rule]");
@@ -3280,7 +3650,7 @@
         var row = closestFromEvent(event, "[data-rule-row]");
         if (row) row.remove();
       });
-      ["portProductName", "portProductType", "portUnitPrice", "portCoTeacher"].forEach(function (id) {
+      ["portProductName", "portProductType", "portUnitPrice", "portCoTeacher", "portQq"].forEach(function (id) {
         $("#" + id).addEventListener("input", updatePortPreview);
         $("#" + id).addEventListener("change", updatePortPreview);
       });
@@ -3317,6 +3687,17 @@
         state.todoSort = button.dataset.todoSort || "due";
         renderTodos();
       });
+      $("#blacklistGrid").addEventListener("click", function (event) {
+        var editButton = closestFromEvent(event, "[data-edit-blacklist]");
+        if (editButton) {
+          openBlacklistModal(editButton.getAttribute("data-edit-blacklist"));
+          return;
+        }
+        var deleteButton = closestFromEvent(event, "[data-delete-blacklist]");
+        if (deleteButton) {
+          deleteBlacklist(deleteButton.getAttribute("data-delete-blacklist"));
+        }
+      });
       ["leaveStart", "leaveEnd"].forEach(function (id) {
         $("#" + id).addEventListener("input", updateLeavePreview);
       });
@@ -3348,8 +3729,10 @@
       ["orderContentType", "orderRushMode"].forEach(function (id) {
         $("#" + id).addEventListener("change", updateOrderPreview);
       });
+      $("#orderItemRows").addEventListener("change", updateOrderPreview);
+      $("#orderItemRows").addEventListener("input", updateOrderPreview);
       $("[data-close-modal]").addEventListener("click", closeModals);
-      $$("#productModal [data-close-modal], #portModal [data-close-modal], #orderModal [data-close-modal], #leaveModal [data-close-modal], #deductRuleModal [data-close-modal]").forEach(function (button) {
+      $$("#productModal [data-close-modal], #portModal [data-close-modal], #orderModal [data-close-modal], #leaveModal [data-close-modal], #deductRuleModal [data-close-modal], #blacklistModal [data-close-modal]").forEach(function (button) {
         button.addEventListener("click", closeModals);
       });
       $("#modalBackdrop").addEventListener("click", closeModals);
